@@ -19,7 +19,7 @@ module.exports = {
         // plugins: [
         //     new webpack.NormalModuleReplacementPlugin(/element-ui[\/\\]lib[\/\\]locale[\/\\]lang[\/\\]zh-CN/, 'element-ui/lib/locale/lang/en')
         // ]
-        devtool: 'source-map',
+        devtool: false, // 禁用source-map以减少内存消耗
         resolve: {
             alias: {
                 '@': resolve('src')

@@ -877,8 +877,8 @@
   }
 
   .pages {
-    & /deep/ el-pagination__sizes{
-      & /deep/ el-input__inner {
+    ::v-deep el-pagination__sizes{
+      ::v-deep el-input__inner {
         height: 22px;
         line-height: 22px;
       }
@@ -891,7 +891,7 @@
   } 
 
   .tables {
-	& /deep/ .el-button--success {
+	::v-deep .el-button--success {
 		height: 40px;
 		color: #333;
 		font-size: 14px;
@@ -902,7 +902,7 @@
 		background-color: var(--publicMainColor);
 	}
 
-	& /deep/ .el-button--primary {
+	::v-deep .el-button--primary {
 		height: 40px;
 		color: #333;
 		font-size: 14px;
@@ -913,7 +913,7 @@
 		background-color: rgba(102, 204, 255, 1);
 	}
 
-	& /deep/ .el-button--danger {
+	::v-deep .el-button--danger {
 		height: 40px;
 		color: #333;
 		font-size: 14px;
@@ -924,7 +924,7 @@
 		background-color: rgba(204, 255, 102, 1);
 	}
 
-    & /deep/ .el-button {
+    ::v-deep .el-button {
       margin: 4px;
     }
   }</style>
