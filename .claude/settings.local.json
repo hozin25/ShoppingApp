@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(clojure-eval)",
+      "Bash(clj-nrepl-eval --discover-ports)",
+      "Bash(clj-nrepl-eval:*)",
+      "WebSearch",
+      "Bash(clj -A:dev:nrepl)",
+      "Bash(timeout:*)",
+      "Bash(cat:*)",
+      "Bash(curl:*)",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Bash(find:*)",
+      "Bash(claude mcp list:*)",
+      "Bash(mkdir:*)",
+      "Bash(clj -M:dev:dev-tiktok:nrepl:*)",
+      "Bash(ping:*)",
+      "Bash(if not exist:*)",
+      "Bash(echo:*)",
+      "Bash(touch:*)",
+      "Bash(netstat:*)",
+      "Skill(beads:create)",
+      "Bash(bd create:*)",
+      "Skill(beads:list)",
+      "Bash(bd:*)"
+    ],
+    "additionalDirectories": [
+      "..\\..\\opensource\\synapse"
+    ]
+  }
+}

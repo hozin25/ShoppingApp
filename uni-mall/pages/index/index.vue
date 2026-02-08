@@ -126,8 +126,8 @@
             return {
                 role:"",
                 table:"",
-                autoplaySwiper: false ? true : false,
-                intervalSwiper: false ? $template2.front.base.swiper.autoplay.delay : 5000,
+                autoplaySwiper: true,
+                intervalSwiper: 3000,
                 //轮播
                 swiperList: [],
                 newsList: [],
@@ -210,6 +210,9 @@
             }
             if (swiperList) {
                 this.swiperList = swiperList;
+                console.log('轮播图数量:', this.swiperList.length);
+                console.log('autoplaySwiper:', this.autoplaySwiper);
+                console.log('intervalSwiper:', this.intervalSwiper);
             }
             let news = await this.$api.list('news', {
                 page: 1,
@@ -412,7 +415,7 @@
     }
 
     .listmr {
-    // width: 460upx;
+         width: 460upx;
         display: inline-block;
         flex: 1;
         display: flex;
@@ -482,7 +485,7 @@
     .image-view {
         height: 321upx;
         width: 321upx;
-    // margin: 12upx 0;
+         margin: 12upx 0;
         display: flex;
         align-items: center;
         overflow: hidden;
