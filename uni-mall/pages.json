@@ -341,11 +341,20 @@
 		}
 	}
 			,{
-		"path": "pages/index/index",
+		"path": "pages/test-cloud/test-cloud",
 		"style": {
 			"navigationBarBackgroundColor": "#71A842",
 			"navigationBarTextStyle": "white",
-			"navigationBarTitleText": "智能小程序商城首页"
+			"navigationBarTitleText": "云开发测试"
+		}
+	},
+	{
+		"path": "pages/index/index",
+		"style": {
+			"navigationBarBackgroundColor": "#FFFFFF",
+			"navigationBarTextStyle": "black",
+			"navigationBarTitleText": "智能小程序商城",
+			"navigationBarTitleColor": "#171A20"
 		}
 	}
 	],
@@ -356,10 +365,10 @@
 		"backgroundColor": "#F8F8F8"
 	},
 	"tabBar": {
-		"color": "#FFFFFF",
-		"selectedColor": "#fff",
-		"borderStyle": "black",
-		"backgroundColor": "#54C0CC",
+		"color": "#6B7280",
+		"selectedColor": "#E82127",
+		"borderStyle": "white",
+		"backgroundColor": "#FFFFFF",
 		"list": [{
 				"pagePath": "pages/index/index",
 				"iconPath": "static/tabs/index.png",

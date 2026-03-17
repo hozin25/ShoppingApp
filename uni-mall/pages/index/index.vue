@@ -1,42 +1,33 @@
 <template>
     <view class="uni-padding-wrap">
 
-        <view class="header">
-            <view class="headerb">
-                <swiper :style='{"padding":"0","boxShadow":"0 2rpx 12rpx rgba(0,0,0,0)","margin":"0 3% 20rpx","borderColor":"rgba(0,0,0,0)","backgroundColor":"rgba(255, 255, 255, 0)","borderRadius":"0","borderWidth":"0","width":"94%","borderStyle":"solid","height":"300rpx"}'
-                        class="swiper" :indicator-dots='".swiper-pagination"==null?false:true'
-                        :autoplay='autoplaySwiper' :circular='true'
-                        indicator-color='rgba(0, 0, 0, .3)' :duration='1000' :interval='intervalSwiper'
-                        :vertical='"horizontal"=="horizontal"?false:true'>
-                    <swiper-item
-                            :style='{"padding":"0","boxShadow":"0 2rpx 12rpx rgba(0,0,0,0)","margin":"0","borderColor":"rgba(0,0,0,0)","backgroundColor":"rgba(255,255,255,1)","borderRadius":"20rpx","borderWidth":"0","width":"100%","borderStyle":"solid","height":"300rpx"}'
-                            v-for="(swiper,index) in swiperList" :key="index" @tap="onSwiperTap(swiper)">
-                        <image :style='{"padding":"0","boxShadow":"0 2rpx 12rpx rgba(0,0,0,0)","margin":"0","borderColor":"rgba(0,0,0,0)","backgroundColor":"rgba(255,255,255,1)","borderRadius":"20rpx","borderWidth":"0","width":"100%","borderStyle":"solid","height":"300rpx"}'
-                               mode="aspectFill" :src="baseUrl+swiper.img"></image>
-                        <view v-if="false"
-                              :style='{"padding":"0 8rpx","boxShadow":"0 2rpx 12rpx rgba(0,0,0,0)","margin":"0","borderColor":"rgba(0,0,0,0)","backgroundColor":"rgba(255,255,255,1)","color":"#333","textAlign":"center","isshow":false,"borderRadius":"0","borderWidth":"0","width":"100%","lineHeight":"60rpx","fontSize":"28rpx","borderStyle":"solid"}'>
-                            {{ swiper.title }}
-                        </view>
+        <!-- Tesla 风格轮播图 -->
+        <view class="tesla-header">
+            <view class="tesla-headerb">
+                <swiper class="tesla-swiper"
+                        :indicator-dots="swiperList.length > 1"
+                        :autoplay="autoplaySwiper"
+                        :circular="true"
+                        indicator-color="rgba(0, 0, 0, 0.2)"
+                        indicator-active-color="#E82127"
+                        :duration="600"
+                        :interval="intervalSwiper">
+                    <swiper-item v-for="(swiper,index) in swiperList" :key="index" @tap="onSwiperTap(swiper)">
+                        <image class="tesla-swiper-image" mode="aspectFill" :src="baseUrl+swiper.img"></image>
                     </swiper-item>
                 </swiper>
             </view>
         </view>
 
-        <view v-if="true" class="menu" style="display: flex;flex-wrap: wrap;justify-content: space-around"
-              :style='{"padding":"0 8rpx","boxShadow":"0 2rpx 12rpx rgba(0,0,0,0)","margin":"0","borderColor":"rgba(0,0,0,0)","backgroundColor":"rgba(255,255,255,1)","borderRadius":"0","borderWidth":"0","width":"100%","borderStyle":"solid","height":"auto"}'>
+        <!-- Tesla 风格菜单网格 -->
+        <view class="tesla-menu-grid">
             <block v-for="item in menuList" v-bind:key="item.roleName">
                 <block v-if="(role==item.roleName||table==item.tableName) && index<=4 && index>0" v-bind:key="index" v-for=" (menu,index) in item.backMenu">
                     <block v-bind:key="sort" v-for=" (child,sort) in menu.child">
                         <block v-for=" (button,sort2) in child.buttons">
-                            <view :style='{"padding":"10rpx","boxShadow":"0 2rpx 12rpx rgba(0,0,0,0)","margin":"0 2% 20rpx 2%","borderColor":"rgba(244, 245, 244, 1)","backgroundColor":"var(--publicSubColor)","borderRadius":"12rpx","borderWidth":"2rpx","width":"21%","borderStyle":"solid","height":"150rpx"}'
-                                   class="menu-list" v-if="button=='查看'" @tap="onPageTap2('../'+child.tableName+'/list')">
-                                <!-- <image style="display: block;" :style='{"padding":"0","boxShadow":"0 2rpx 12rpx rgba(0,0,0,0)","margin":"0px auto","borderColor":"rgba(0,0,0,0)","backgroundColor":"rgba(0,0,0,0)","borderRadius":"20rpx","color":"#333","borderWidth":"0","width":"80rpx","fontSize":"64rpx","borderStyle":"solid","height":"80rpx"}' mode="aspectFill" src="http://codegen.caihongy.cn/20201114/7856ba26477849ea828f481fa2773a95.jpg"></image> -->
-                                <view class="iconarr" :class="child.appFrontIcon"
-                                      :style='{"padding":"0","boxShadow":"0 2rpx 12rpx rgba(0,0,0,0)","margin":"0px auto","borderColor":"rgba(0,0,0,0)","backgroundColor":"rgba(0,0,0,0)","borderRadius":"20rpx","color":"#fff","borderWidth":"0","width":"80rpx","fontSize":"64rpx","borderStyle":"solid","height":"60%"}'>
-                                </view>
-                                <view :style='{"padding":"0","boxShadow":"0 2rpx 12rpx rgba(0,0,0,0)","margin":"5rpx auto 0","borderColor":"rgba(0,0,0,0)","backgroundColor":"rgba(0,0,0,0)","color":"#fff","textAlign":"center","borderRadius":"0","borderWidth":"0","width":"100%","lineHeight":"28rpx","fontSize":"28rpx","borderStyle":"solid","height":"30%"}'>
-                                    {{child.menu.split("列表")[0]}}
-                                </view>
+                            <view class="tesla-menu-item" v-if="button=='查看'" @tap="onPageTap2('../'+child.tableName+'/list')">
+                                <view class="tesla-menu-icon" :class="child.appFrontIcon"></view>
+                                <view class="tesla-menu-label">{{child.menu.split("列表")[0]}}</view>
                             </view>
                         </block>
                     </block>
@@ -45,69 +36,52 @@
         </view>
 
 
-        <view class="listBox news">
-
-<view class="title"
-      :style='{"padding":"0 24rpx","boxShadow":"0px 14rpx 0px 0px var(--publicMainColor)","margin":"0 auto 20rpx","borderColor":"rgba(0,0,0,0)","backgroundColor":"var(--publicSubColor)","borderRadius":"48rpx","borderWidth":"0","width":"90%","borderStyle":"solid","height":"auto"}'>
-    <view :style='{"padding":"0","boxShadow":"0 2rpx 12rpx rgba(0,0,0,0)","margin":"0","borderColor":"red","backgroundColor":"rgba(0, 0, 0, 0)","color":"rgba(0, 0, 0, 1)","textAlign":"right","borderRadius":"0","borderWidth":"0","width":"60%","fontSize":"32rpx","lineHeight":"80rpx","borderStyle":"solid"}'>
-        公告信息展示
-    </view>
-    <text :style='{"padding":"0","boxShadow":"0 2rpx 12rpx rgba(0,0,0,0)","margin":"0","borderColor":"rgba(0,0,0,0)","backgroundColor":"rgba(255, 255, 255, 0)","color":"#fff","textAlign":"right","borderRadius":"0","borderWidth":"0","width":"40%","lineHeight":"80rpx","fontSize":"28rpx","borderStyle":"solid"}'
-          @tap="onPageTap('news')">查看更多
-    </text>
-</view><view class="news-box3"
-      :style='{"padding":"20rpx","boxShadow":"0 0 12rpx rgba(0,0,0,0)","margin":"0 0 20rpx","borderColor":"red","backgroundColor":"rgba(255,255,255,1)","borderRadius":"0","borderWidth":"0","width":"100%","borderStyle":"solid","height":"auto"}'>
-    <view @tap="onDetailTap('news',item.id)" v-for="(item,index) in newsList" :key="index" class="list-item"
-          :style='{"padding":"20rpx","boxShadow":"0 0 12rpx rgba(255,0,0,0)","margin":"0 ","borderColor":"#ccc","backgroundColor":"rgba(255,255,255,1)","borderRadius":"0","borderWidth":"0 0 2rpx 0","width":"100%","borderStyle":"solid","height":"auto"}'
-          style="display: flex;align-items: center;">
-        <view :style='{"padding":"0","boxShadow":"8rpx 0 4rpx rgba(153,153,153,1)","margin":"0","borderColor":"#ccc","backgroundColor":"rgba(64, 171, 54, 1)","borderRadius":"0","borderWidth":"0","width":"8rpx","borderStyle":"solid","height":"16rpx"}'
-              class="dian"></view>
-        <view :style='{"padding":"0 20rpx","boxShadow":"0 0 12rpx rgba(255,0,0,0)","margin":"0","borderColor":"red","backgroundColor":"rgba(255,0,0,0)","color":"#333","textAlign":"left","borderRadius":"0","borderWidth":"0","width":"calc(100% - 40rpx)","lineHeight":"auto","fontSize":"30rpx","borderStyle":"solid"}'
-              class="title hide1">{{item.newsName}}
+        <!-- Tesla 风格公告区域 -->
+        <view class="tesla-section tesla-news-section">
+            <view class="tesla-section-header">
+                <view class="tesla-section-title">公告信息</view>
+                <view class="tesla-section-more" @tap="onPageTap('news')">查看更多</view>
+            </view>
+            <view class="tesla-news-list">
+                <view class="tesla-news-item" v-for="(item,index) in newsList" :key="index"
+                      @tap="onDetailTap('news',item.id)">
+                    <view class="tesla-news-indicator"></view>
+                    <view class="tesla-news-title">{{item.newsName}}</view>
+                    <view class="tesla-news-arrow cuIcon-right"></view>
+                </view>
+            </view>
         </view>
-        <view :style='{"padding":"0","boxShadow":"0 0 12rpx rgba(255,0,0,0)","margin":"0","borderColor":"red","backgroundColor":"rgba(255,0,0,0)","color":"#666","borderRadius":"0","borderWidth":"0","width":"32rpx","lineHeight":"72rpx","fontSize":"32rpx","borderStyle":"solid"}' class="cuIcon-right"></view>
-    </view>
-</view>
+        <!-- Tesla 风格商品展示 -->
+        <view class="tesla-section tesla-product-section">
+            <view class="tesla-section-header">
+                <view class="tesla-section-title">商品推荐</view>
+                <view class="tesla-section-more" @tap="onPageTap('shangpin')">查看更多</view>
+            </view>
+            <view class="tesla-product-list">
+                <view class="tesla-product-card" v-for="(product,index) in shangpinList" :key="index"
+                      @tap="onDetailTap('shangpin',product.id)">
+                    <view class="tesla-product-image-wrapper">
+                        <image class="tesla-product-image" mode="aspectFill" :src="baseUrl+product.shangpinPhoto"></image>
+                    </view>
+                    <view class="tesla-product-name">{{product.shangpinName}}</view>
+                </view>
+            </view>
         </view>
-        <view class="listBox recommend">
-
-<view class="title"
-      :style='{"padding":"0 24rpx","boxShadow":"0px 14rpx 0px 0px var(--publicMainColor)","margin":"0 auto 20rpx","borderColor":"rgba(0,0,0,0)","backgroundColor":"var(--publicSubColor)","borderRadius":"48rpx","borderWidth":"0","width":"90%","borderStyle":"solid","height":"auto"}'>
-    <view :style='{"padding":"0","boxShadow":"0 2rpx 12rpx rgba(0,0,0,0)","margin":"0","borderColor":"red","backgroundColor":"rgba(0, 0, 0, 0)","color":"rgba(0, 0, 0, 1)","textAlign":"right","borderRadius":"0","borderWidth":"0","width":"60%","fontSize":"32rpx","lineHeight":"80rpx","borderStyle":"solid"}'>
-        商品展示
-    </view>
-    <text :style='{"padding":"0","boxShadow":"0 2rpx 12rpx rgba(0,0,0,0)","margin":"0","borderColor":"rgba(0,0,0,0)","backgroundColor":"rgba(255, 255, 255, 0)","color":"#fff","textAlign":"right","borderRadius":"0","borderWidth":"0","width":"40%","lineHeight":"80rpx","fontSize":"28rpx","borderStyle":"solid"}'
-          @tap="onPageTap('shangpin')">查看更多
-    </text>
-</view>
-<view v-if='2 == 2' class="uni-product-list" :class="2 == 2 ? 'active' : ''" :style='{"borderRadius":"0","backgroundColor":"#efefef"}'>
-    <view @tap="onDetailTap('shangpin',product.id)" :style='{"borderRadius":"8rpx","backgroundColor":"#fff"}' class="uni-product" v-for="(product,index) in shangpinList" :key="index">
-        <view :style='{"fontSize":"28rpx","lineHeight":"56rpx","color":"var(--publicMainColor)","textAlign":"center"}' class="uni-product-title">{{product.shangpinName}}</view>
-        <view class="image-view" :style='{"borderRadius":"2rpx","height":"180rpx"}'>
-            <image :style='{"height":"180rpx","borderRadius":"90rpx"}' mode="aspectFill" class="uni-product-image" :src="baseUrl+product.shangpinPhoto"></image>
-        </view>
-    </view>
-</view>
-        </view>
-        <view class="listBox recommend">
-
-<view class="title"
-      :style='{"padding":"0 24rpx","boxShadow":"0px 14rpx 0px 0px var(--publicMainColor)","margin":"0 auto 20rpx","borderColor":"rgba(0,0,0,0)","backgroundColor":"var(--publicSubColor)","borderRadius":"48rpx","borderWidth":"0","width":"90%","borderStyle":"solid","height":"auto"}'>
-    <view :style='{"padding":"0","boxShadow":"0 2rpx 12rpx rgba(0,0,0,0)","margin":"0","borderColor":"red","backgroundColor":"rgba(0, 0, 0, 0)","color":"rgba(0, 0, 0, 1)","textAlign":"right","borderRadius":"0","borderWidth":"0","width":"60%","fontSize":"32rpx","lineHeight":"80rpx","borderStyle":"solid"}'>
-        商家展示
-    </view>
-    <text :style='{"padding":"0","boxShadow":"0 2rpx 12rpx rgba(0,0,0,0)","margin":"0","borderColor":"rgba(0,0,0,0)","backgroundColor":"rgba(255, 255, 255, 0)","color":"#fff","textAlign":"right","borderRadius":"0","borderWidth":"0","width":"40%","lineHeight":"80rpx","fontSize":"28rpx","borderStyle":"solid"}'
-          @tap="onPageTap('shangjia')">查看更多
-    </text>
-</view>
-<view v-if='2 == 2' class="uni-product-list" :class="2 == 2 ? 'active' : ''" :style='{"borderRadius":"0","backgroundColor":"#efefef"}'>
-    <view @tap="onDetailTap('shangjia',product.id)" :style='{"borderRadius":"8rpx","backgroundColor":"#fff"}' class="uni-product" v-for="(product,index) in shangjiaList" :key="index">
-        <view :style='{"fontSize":"28rpx","lineHeight":"56rpx","color":"var(--publicMainColor)","textAlign":"center"}' class="uni-product-title">{{product.shangjiaName}}</view>
-        <view class="image-view" :style='{"borderRadius":"2rpx","height":"180rpx"}'>
-            <image :style='{"height":"180rpx","borderRadius":"90rpx"}' mode="aspectFill" class="uni-product-image" :src="baseUrl+product.shangjiaPhoto"></image>
-        </view>
-    </view>
-</view>
+        <!-- Tesla 风格商家展示 -->
+        <view class="tesla-section tesla-merchant-section">
+            <view class="tesla-section-header">
+                <view class="tesla-section-title">推荐商家</view>
+                <view class="tesla-section-more" @tap="onPageTap('shangjia')">查看更多</view>
+            </view>
+            <view class="tesla-merchant-list">
+                <view class="tesla-merchant-card" v-for="(product,index) in shangjiaList" :key="index"
+                      @tap="onDetailTap('shangjia',product.id)">
+                    <view class="tesla-merchant-image-wrapper">
+                        <image class="tesla-merchant-image" mode="aspectFill" :src="baseUrl+product.shangjiaPhoto"></image>
+                    </view>
+                    <view class="tesla-merchant-name">{{product.shangjiaName}}</view>
+                </view>
+            </view>
         </view>
 
 
@@ -679,5 +653,292 @@
         -webkit-line-clamp: 4;
         line-clamp: 4;
         -webkit-box-orient: vertical;
+    }
+
+    /* ========== Tesla 风格全局样式 ========== */
+    page {
+        background: var(--tesla-bg-primary);
+    }
+
+    .uni-padding-wrap {
+        padding: 0;
+    }
+
+    /* ========== Tesla 风格轮播图样式 ========== */
+    .tesla-header {
+        background: var(--tesla-bg-primary);
+        padding: 24rpx 24rpx 0;
+    }
+
+    .tesla-headerb {
+        width: 100%;
+    }
+
+    .tesla-swiper {
+        width: 100%;
+        height: 360rpx;
+        border-radius: 12rpx;
+        overflow: hidden;
+        box-shadow: var(--tesla-card-shadow);
+    }
+
+    .tesla-swiper-image {
+        width: 100%;
+        height: 100%;
+        border-radius: 12rpx;
+    }
+
+    /* 覆盖默认指示器样式 */
+    .tesla-swiper /deep/ .uni-swiper-dot {
+        width: 8rpx;
+        height: 8rpx;
+        border-radius: 50%;
+    }
+
+    .tesla-swiper /deep/ .uni-swiper-dot-active {
+        width: 24rpx;
+        border-radius: 4rpx;
+    }
+
+    /* ========== Tesla 风格菜单网格 ========== */
+    .tesla-menu-grid {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-start;
+        padding: 32rpx 24rpx;
+        background: var(--tesla-bg-secondary);
+        gap: 16rpx;
+    }
+
+    .tesla-menu-item {
+        width: calc((100% - 48rpx) / 4);
+        aspect-ratio: 1;
+        background: var(--tesla-bg-primary);
+        border-radius: 16rpx;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        box-shadow: var(--tesla-card-shadow);
+        transition: all 0.3s ease;
+    }
+
+    .tesla-menu-icon {
+        font-size: 56rpx;
+        color: var(--publicMainColor);
+        line-height: 1;
+        margin-bottom: 12rpx;
+    }
+
+    .tesla-menu-label {
+        font-size: 24rpx;
+        color: var(--tesla-text-primary);
+        font-weight: 500;
+    }
+
+    /* ========== Tesla 风格区域容器 ========== */
+    .tesla-section {
+        padding: 32rpx 24rpx;
+        background: var(--tesla-bg-primary);
+    }
+
+    .tesla-section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24rpx;
+    }
+
+    .tesla-section-title {
+        font-size: 36rpx;
+        font-weight: 600;
+        color: var(--tesla-text-primary);
+        letter-spacing: 0.5rpx;
+    }
+
+    .tesla-section-more {
+        font-size: 28rpx;
+        color: var(--publicSubColor);
+    }
+
+    /* ========== Tesla 风格公告列表 ========== */
+    .tesla-news-list {
+        background: var(--tesla-bg-secondary);
+        border-radius: 16rpx;
+        overflow: hidden;
+    }
+
+    .tesla-news-item {
+        display: flex;
+        align-items: center;
+        padding: 28rpx 24rpx;
+        position: relative;
+        transition: background 0.2s ease;
+    }
+
+    .tesla-news-item:active {
+        background: rgba(0, 0, 0, 0.02);
+    }
+
+    .tesla-news-item + .tesla-news-item::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 56rpx;
+        right: 24rpx;
+        height: 1rpx;
+        background: var(--tesla-border);
+    }
+
+    .tesla-news-indicator {
+        width: 6rpx;
+        height: 6rpx;
+        background: var(--publicMainColor);
+        border-radius: 50%;
+        margin-right: 20rpx;
+        flex-shrink: 0;
+    }
+
+    .tesla-news-title {
+        flex: 1;
+        font-size: 30rpx;
+        color: var(--tesla-text-primary);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .tesla-news-arrow {
+        margin-left: 16rpx;
+        color: var(--tesla-text-secondary);
+        font-size: 28rpx;
+    }
+
+    /* ========== Tesla 风格商品列表 ========== */
+    .tesla-product-list {
+        display: flex;
+        gap: 16rpx;
+        overflow-x: auto;
+        padding-bottom: 8rpx;
+    }
+
+    .tesla-product-list::-webkit-scrollbar {
+        display: none;
+    }
+
+    .tesla-product-card {
+        flex-shrink: 0;
+        width: 280rpx;
+        background: var(--tesla-bg-secondary);
+        border-radius: 16rpx;
+        overflow: hidden;
+        box-shadow: var(--tesla-card-shadow);
+    }
+
+    .tesla-product-image-wrapper {
+        width: 100%;
+        height: 280rpx;
+        overflow: hidden;
+        background: #F3F4F6;
+    }
+
+    .tesla-product-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .tesla-product-name {
+        padding: 20rpx 16rpx;
+        font-size: 28rpx;
+        color: var(--tesla-text-primary);
+        text-align: center;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* ========== Tesla 风格商家列表 ========== */
+    .tesla-merchant-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16rpx;
+    }
+
+    .tesla-merchant-card {
+        width: calc((100% - 32rpx) / 2);
+        background: var(--tesla-bg-secondary);
+        border-radius: 16rpx;
+        overflow: hidden;
+        box-shadow: var(--tesla-card-shadow);
+    }
+
+    .tesla-merchant-image-wrapper {
+        width: 100%;
+        aspect-ratio: 4/3;
+        overflow: hidden;
+        background: #F3F4F6;
+    }
+
+    .tesla-merchant-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .tesla-merchant-name {
+        padding: 20rpx 16rpx;
+        font-size: 28rpx;
+        color: var(--tesla-text-primary);
+        text-align: center;
+        font-weight: 500;
+    }
+
+    /* ========== Tesla 风格微动效 ========== */
+
+    /* 菜单卡片悬浮效果 */
+    .tesla-menu-item {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .tesla-menu-item:active {
+        transform: scale(0.95);
+    }
+
+    /* 产品卡片悬浮效果 */
+    .tesla-product-card {
+        transition: transform 0.2s ease;
+    }
+
+    .tesla-product-card:active {
+        transform: scale(0.97);
+    }
+
+    /* 商家卡片悬浮效果 */
+    .tesla-merchant-card {
+        transition: transform 0.2s ease;
+    }
+
+    .tesla-merchant-card:active {
+        transform: scale(0.97);
+    }
+
+    /* 轮播图过渡效果优化 */
+    .tesla-swiper {
+        transition: transform 0.3s ease-out;
+    }
+
+    /* 查看更多文字点击效果 */
+    .tesla-section-more {
+        transition: opacity 0.2s ease;
+    }
+
+    .tesla-section-more:active {
+        opacity: 0.6;
+    }
+
+    /* ========== 隐藏旧样式 ========== */
+    .header, .menu, .listBox, .uni-product-list {
+        display: none !important;
     }
 </style>
