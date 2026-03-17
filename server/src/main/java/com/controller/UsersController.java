@@ -24,6 +24,7 @@ import com.service.TokenService;
 import com.utils.MPUtil;
 import com.utils.PageUtils;
 import com.utils.R;
+import org.apache.commons.codec.digest.DigestUtils;
 
 /**
  * 登录相关
@@ -45,7 +46,7 @@ public class UsersController {
 	@PostMapping(value = "/login")
 	public R login(String username, String password, String captcha, HttpServletRequest request) {
 		UsersEntity user = usersService.selectOne(new EntityWrapper<UsersEntity>().eq("username", username));
-		if(user==null || !user.getPassword().equals(password)) {
+		if(user==null || !user.getPassword().equals(DigestUtils.md5Hex(password))) {
 			return R.error("账号或密码不正确");
 		}
 		String token = tokenService.generateToken(user.getId(),username, "users", user.getRole());
@@ -88,13 +89,13 @@ public class UsersController {
 		if(newPassword == null){
 			return R.error("新密码不能为空") ;
 		}
-		if(!oldPassword.equals(users.getPassword())){
+		if(!DigestUtils.md5Hex(oldPassword).equals(users.getPassword())){
 			return R.error("原密码输入错误");
 		}
-		if(newPassword.equals(users.getPassword())){
+		if(DigestUtils.md5Hex(newPassword).equals(users.getPassword())){
 			return R.error("新密码不能和原密码一致") ;
 		}
-		users.setPassword(newPassword);
+		users.setPassword(DigestUtils.md5Hex(newPassword));
 		usersService.updateById(users);
 		return R.ok();
 	}
@@ -109,7 +110,7 @@ public class UsersController {
     	if(user==null) {
     		return R.error("账号不存在");
     	}
-    	user.setPassword("123456");
+    	user.setPassword(DigestUtils.md5Hex("123456"));
         usersService.update(user,null);
         return R.ok("密码已重置为：123456");
     }
@@ -188,5 +189,27 @@ public class UsersController {
 			return R.error("管理员最少保留一个");
 		}
         return R.ok();
+    }
+
+    // 添加一个新的方法用于升级已有密码
+    @GetMapping(value = "/upgradePasswords")
+    @IgnoreAuth  // 仅在需要时使用，使用后请删除此接口
+    public R upgradePasswords() {
+        try {
+            List<UsersEntity> users = usersService.selectList(null);
+            int count = 0;
+            for (UsersEntity user : users) {
+                // 假设密码长度大于32的已经是MD5加密过的
+                if (user.getPassword() != null && user.getPassword().length() != 32) {
+                    user.setPassword(DigestUtils.md5Hex(user.getPassword()));
+                    usersService.updateById(user);
+                    count++;
+                }
+            }
+            return R.ok("成功更新 " + count + " 个管理员的密码");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return R.error("密码升级失败：" + e.getMessage());
+        }
     }
 }

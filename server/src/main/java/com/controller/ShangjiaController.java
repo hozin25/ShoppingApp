@@ -31,6 +31,7 @@ import com.service.*;
 import com.utils.PageUtils;
 import com.utils.R;
 import com.alibaba.fastjson.*;
+import org.apache.commons.codec.digest.DigestUtils;
 
 /**
  * 商家
@@ -148,7 +149,7 @@ public class ShangjiaController {
         if(shangjiaEntity==null){
             shangjia.setShangjiaDelete(1);
             shangjia.setCreateTime(new Date());
-            shangjia.setPassword("123456");
+            shangjia.setPassword(DigestUtils.md5Hex("123456"));
             shangjiaService.insert(shangjia);
             return R.ok();
         }else {
@@ -301,7 +302,7 @@ public class ShangjiaController {
     @RequestMapping(value = "/login")
     public R login(String username, String password, String captcha, HttpServletRequest request) {
         ShangjiaEntity shangjia = shangjiaService.selectOne(new EntityWrapper<ShangjiaEntity>().eq("username", username));
-        if(shangjia==null || !shangjia.getPassword().equals(password))
+        if(shangjia==null || !shangjia.getPassword().equals(DigestUtils.md5Hex(password)))
             return R.error("账号或密码不正确");
         else if(shangjia.getShangjiaDelete() != 1)
             return R.error("账户已被删除");
@@ -346,7 +347,7 @@ public class ShangjiaController {
     @GetMapping(value = "/resetPassword")
     public R resetPassword(Integer  id, HttpServletRequest request) {
         ShangjiaEntity shangjia = shangjiaService.selectById(id);
-        shangjia.setPassword("123456");
+        shangjia.setPassword(DigestUtils.md5Hex("123456"));
         shangjiaService.updateById(shangjia);
         return R.ok();
     }
@@ -360,13 +361,13 @@ public class ShangjiaController {
 		if(newPassword == null){
 			return R.error("新密码不能为空") ;
 		}
-		if(!oldPassword.equals(shangjia.getPassword())){
+		if(!DigestUtils.md5Hex(oldPassword).equals(shangjia.getPassword())){
 			return R.error("原密码输入错误");
 		}
-		if(newPassword.equals(shangjia.getPassword())){
+		if(DigestUtils.md5Hex(newPassword).equals(shangjia.getPassword())){
 			return R.error("新密码不能和原密码一致") ;
 		}
-        shangjia.setPassword(newPassword);
+        shangjia.setPassword(DigestUtils.md5Hex(newPassword));
 		shangjiaService.updateById(shangjia);
 		return R.ok();
 	}
@@ -381,7 +382,7 @@ public class ShangjiaController {
     public R resetPass(String username, HttpServletRequest request) {
         ShangjiaEntity shangjia = shangjiaService.selectOne(new EntityWrapper<ShangjiaEntity>().eq("username", username));
         if(shangjia!=null){
-            shangjia.setPassword("123456");
+            shangjia.setPassword(DigestUtils.md5Hex("123456"));
             shangjiaService.updateById(shangjia);
             return R.ok();
         }else{
@@ -483,12 +484,34 @@ public class ShangjiaController {
         if(shangjiaEntity==null){
             shangjia.setShangjiaDelete(1);
             shangjia.setCreateTime(new Date());
-            shangjia.setPassword("123456");
+            shangjia.setPassword(DigestUtils.md5Hex("123456"));
         shangjiaService.insert(shangjia);
 
             return R.ok();
         }else {
             return R.error(511,"账户或者联系方式已经被使用");
+        }
+    }
+
+    // 添加一个新的方法用于升级已有密码
+    @GetMapping(value = "/upgradePasswords")
+    @IgnoreAuth  // 仅在需要时使用，使用后请删除此接口
+    public R upgradePasswords() {
+        try {
+            List<ShangjiaEntity> users = shangjiaService.selectList(null);
+            int count = 0;
+            for (ShangjiaEntity user : users) {
+                // 假设密码长度大于32的已经是MD5加密过的
+                if (user.getPassword() != null && user.getPassword().length() != 32) {
+                    user.setPassword(DigestUtils.md5Hex(user.getPassword()));
+                    shangjiaService.updateById(user);
+                    count++;
+                }
+            }
+            return R.ok("成功更新 " + count + " 个商家的密码");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return R.error("密码升级失败：" + e.getMessage());
         }
     }
 
