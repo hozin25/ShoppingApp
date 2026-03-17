@@ -1,7 +1,0 @@
-{
-  "navigationBarTitleText": "商品订单",
-  "usingComponents": {
-    "mescroll-uni": "/components/mescroll-uni/mescroll-uni",
-    "uni-popup": "/uni_modules/uni-popup/components/uni-popup/uni-popup"
-  }
-}
