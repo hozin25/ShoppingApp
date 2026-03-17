@@ -1,0 +1,7 @@
+node_modules
+.idea
+target/
+*.class
+
+# uni-app build artifacts
+uni-mall/unpackage/
