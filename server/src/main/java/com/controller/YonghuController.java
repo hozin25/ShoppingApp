@@ -147,7 +147,7 @@ public class YonghuController {
         YonghuEntity yonghuEntity = yonghuService.selectOne(queryWrapper);
         if(yonghuEntity==null){
             yonghu.setCreateTime(new Date());
-            yonghu.setPassword("123456");
+            yonghu.setPassword(DigestUtils.md5Hex("123456"));
             yonghuService.insert(yonghu);
             return R.ok();
         }else {
@@ -504,7 +504,7 @@ public class YonghuController {
         YonghuEntity yonghuEntity = yonghuService.selectOne(queryWrapper);
         if(yonghuEntity==null){
             yonghu.setCreateTime(new Date());
-            yonghu.setPassword("123456");
+            yonghu.setPassword(DigestUtils.md5Hex("123456"));
         yonghuService.insert(yonghu);
 
             return R.ok();
