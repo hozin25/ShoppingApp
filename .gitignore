@@ -1,7 +1,37 @@
-node_modules
-.idea
-target/
-*.class
+# Java/Maven
+server/target/
+server/.idea/
+*.classes
+*.jar
+*.war
+*.ear
 
-# uni-app build artifacts
+# Node.js
+client/node_modules/
+client/dist/
+client/.idea/
+
+# uni-app
 uni-mall/unpackage/
+uni-mall/node_modules/
+uni-mall/._cache_rg.exe
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temp files
+*.tmp
+*.temp
