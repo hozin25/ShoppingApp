@@ -302,10 +302,34 @@ public class ShangjiaController {
     @RequestMapping(value = "/login")
     public R login(String username, String password, String captcha, HttpServletRequest request) {
         ShangjiaEntity shangjia = shangjiaService.selectOne(new EntityWrapper<ShangjiaEntity>().eq("username", username));
-        if(shangjia==null || !shangjia.getPassword().equals(DigestUtils.md5Hex(password)))
+        if(shangjia==null) {
             return R.error("账号或密码不正确");
-        else if(shangjia.getShangjiaDelete() != 1)
+        }
+        else if(shangjia.getShangjiaDelete() != 1) {
             return R.error("账户已被删除");
+        }
+
+        // 检查密码格式，如果不是MD5格式（长度不是32），则进行密码升级
+        boolean needUpgrade = shangjia.getPassword() != null && shangjia.getPassword().length() != 32;
+        boolean passwordMatch = false;
+
+        if (needUpgrade) {
+            // 数据库存的是明文密码，直接比对
+            passwordMatch = shangjia.getPassword().equals(password);
+            if (passwordMatch) {
+                // 验证成功，更新为MD5加密密码
+                shangjia.setPassword(DigestUtils.md5Hex(password));
+                shangjiaService.updateById(shangjia);
+            }
+        } else {
+            // 数据库存的是MD5密码，使用MD5比对
+            passwordMatch = shangjia.getPassword().equals(DigestUtils.md5Hex(password));
+        }
+
+        if (!passwordMatch) {
+            return R.error("账号或密码不正确");
+        }
+
         String token = tokenService.generateToken(shangjia.getId(),username, "shangjia", "商家");
         R r = R.ok();
         r.put("token", token);

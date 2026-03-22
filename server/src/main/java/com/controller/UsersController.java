@@ -46,9 +46,31 @@ public class UsersController {
 	@PostMapping(value = "/login")
 	public R login(String username, String password, String captcha, HttpServletRequest request) {
 		UsersEntity user = usersService.selectOne(new EntityWrapper<UsersEntity>().eq("username", username));
-		if(user==null || !user.getPassword().equals(DigestUtils.md5Hex(password))) {
+		if(user==null) {
 			return R.error("账号或密码不正确");
 		}
+
+		// 检查密码格式，如果不是MD5格式（长度不是32），则进行密码升级
+		boolean needUpgrade = user.getPassword() != null && user.getPassword().length() != 32;
+		boolean passwordMatch = false;
+
+		if (needUpgrade) {
+			// 数据库存的是明文密码，直接比对
+			passwordMatch = user.getPassword().equals(password);
+			if (passwordMatch) {
+				// 验证成功，更新为MD5加密密码
+				user.setPassword(DigestUtils.md5Hex(password));
+				usersService.updateById(user);
+			}
+		} else {
+			// 数据库存的是MD5密码，使用MD5比对
+			passwordMatch = user.getPassword().equals(DigestUtils.md5Hex(password));
+		}
+
+		if (!passwordMatch) {
+			return R.error("账号或密码不正确");
+		}
+
 		String token = tokenService.generateToken(user.getId(),username, "users", user.getRole());
 		R r = R.ok();
 		r.put("token", token);
