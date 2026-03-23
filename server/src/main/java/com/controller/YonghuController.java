@@ -308,8 +308,16 @@ public class YonghuController {
     @RequestMapping(value = "/login")
     public R login(String username, String password, String captcha, HttpServletRequest request) {
         YonghuEntity yonghu = yonghuService.selectOne(new EntityWrapper<YonghuEntity>().eq("username", username));
-        if(yonghu==null || !yonghu.getPassword().equals(DigestUtils.md5Hex(password)))
+        if(yonghu ==null) {
+            return R.error("账号或密码不存在");
+        }
+        String inputPasswordMd5 = DigestUtils.md5Hex(password);
+        String dbPassword = yonghu.getPassword();
+        if (!dbPassword.equals(inputPasswordMd5)){
             return R.error("账号或密码不正确");
+        }
+        /*if(yonghu==null || !yonghu.getPassword().equals(DigestUtils.md5Hex(password)))
+            return R.error("账号或密码不正确");*/
         String token = tokenService.generateToken(yonghu.getId(),username, "yonghu", "用户");
         R r = R.ok();
         r.put("token", token);
