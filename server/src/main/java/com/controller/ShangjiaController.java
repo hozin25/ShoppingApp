@@ -391,9 +391,22 @@ public class ShangjiaController {
 		if(DigestUtils.md5Hex(newPassword).equals(shangjia.getPassword())){
 			return R.error("新密码不能和原密码一致") ;
 		}
+
+		// 1. 更新密码
         shangjia.setPassword(DigestUtils.md5Hex(newPassword));
 		shangjiaService.updateById(shangjia);
-		return R.ok();
+
+		// 2. 生成新token
+		Integer userId = shangjia.getId();
+		String username = shangjia.getUsername();  // 注意：商家用户名字段是shangjiazhanghao
+		String tableName = "shangjia";
+		String role = "商家";
+		String newToken = tokenService.generateToken(userId, username, tableName, role);
+
+		// 3. 返回新token
+		R r = R.ok("密码修改成功");
+		r.put("token", newToken);
+		return r;
 	}
 
 
@@ -429,6 +442,7 @@ public class ShangjiaController {
 
             //修改对应字典表字段
             dictionaryService.dictionaryConvert(view, request);
+            view.setPassword(null);  // 安全修复：清除密码字段，防止明文密码泄露到前端
             return R.ok().put("data", view);
         }else {
             return R.error(511,"查不到数据");

@@ -467,6 +467,7 @@ public class YonghuController {
 
             //修改对应字典表字段
             dictionaryService.dictionaryConvert(view, request);
+            view.setPassword(null);  // 安全修复：清除密码字段，防止明文密码泄露到前端
             return R.ok().put("data", view);
         }else {
             return R.error(511,"查不到数据");

@@ -117,9 +117,22 @@ public class UsersController {
 		if(DigestUtils.md5Hex(newPassword).equals(users.getPassword())){
 			return R.error("新密码不能和原密码一致") ;
 		}
+
+		// 1. 更新密码
 		users.setPassword(DigestUtils.md5Hex(newPassword));
 		usersService.updateById(users);
-		return R.ok();
+
+		// 2. 生成新token
+		Integer userId = users.getId();
+		String username = users.getUsername();
+		String tableName = "users";
+		String role = users.getRole();
+		String newToken = tokenService.generateToken(userId, username, tableName, role);
+
+		// 3. 返回新token
+		R r = R.ok("密码修改成功");
+		r.put("token", newToken);
+		return r;
 	}
 	
 	/**
@@ -173,6 +186,7 @@ public class UsersController {
     public R getCurrUser(HttpServletRequest request){
     	Integer id = (Integer)request.getSession().getAttribute("userId");
         UsersEntity user = usersService.selectById(id);
+        user.setPassword(null);  // 安全修复：清除密码字段，防止明文密码泄露到前端
         return R.ok().put("data", user);
     }
 

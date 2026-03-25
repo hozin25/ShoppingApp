@@ -75,36 +75,40 @@ export default {
     onUpdateHandler() {
       this.$refs["ruleForm"].validate(valid => {
         if (valid) {
-          var password = "";
-          if (this.user.mima) {
-            password = this.user.mima;
-          } else if (this.user.password) {
-            password = this.user.password;
-          }
-          if (this.ruleForm.password != password) {
-            this.$message.error("原密码错误");
-            return;
-          }
+          // 1. 前端只验证：新密码和确认密码是否一致
           if (this.ruleForm.newpassword != this.ruleForm.repassword) {
             this.$message.error("两次密码输入不一致");
             return;
           }
-          this.user.password = this.ruleForm.newpassword;
-          this.user.mima = this.ruleForm.newpassword;
+
+          // 2. 使用updatePassword接口，让后端验证原密码
           this.$http({
-            url: `${this.$storage.get("sessionTable")}/update`,
-            method: "post",
-            data: this.user
+            url: `${this.$storage.get("sessionTable")}/updatePassword`,
+            method: "get",
+            params: {
+              oldPassword: this.ruleForm.password,
+              newPassword: this.ruleForm.newpassword
+            }
           }).then(({ data }) => {
             if (data && data.code === 0) {
+              // 3. 检查响应中是否包含新token并更新
+              if (data.token) {
+                this.$storage.set("Token", data.token);
+              }
+
+              // 4. 显示成功消息
               this.$message({
-                message: "修改密码成功,下次登录系统生效",
+                message: data.token ? "修改密码成功,token已更新" : "修改密码成功",
                 type: "success",
                 duration: 1500,
                 onClose: () => {
+                  // 清空表单
+                  this.ruleForm = {};
+                  this.$refs["ruleForm"].resetFields();
                 }
               });
             } else {
+              // 5. 显示错误消息（如"原密码错误"）
               this.$message.error(data.msg);
             }
           });
