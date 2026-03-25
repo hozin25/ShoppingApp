@@ -32,10 +32,73 @@ public R updatePassword(String oldPassword, String newPassword, HttpServletReque
 
 ### 前端现状
 
-**Client (管理后台)：**
-- **文件：** `client/src/views/update-password.vue:98-110`
-- **问题：** 密码修改成功后不更新localStorage中的token
-- **存储位置：** `client/src/utils/storage.js` 使用 `localStorage.setItem()`
+**Client (管理后台) - ⚠️ 发现严重安全问题：**
+
+**文件：** `client/src/views/update-password.vue`
+
+**发现的安全问题：**
+
+1. **前端进行明文密码验证（第84-87行）：**
+```javascript
+// ❌ 不安全的明文密码验证
+var password = "";
+if (this.user.mima) {
+    password = this.user.mima;
+} else if (this.user.password) {
+    password = this.user.password;
+}
+if (this.ruleForm.password != password) {
+    this.$message.error("原密码错误");
+    return;  // 前端拦截，不发送请求
+}
+```
+
+2. **调用错误的接口（第95行）：**
+```javascript
+// ❌ 调用的是update接口，不是updatePassword接口
+this.$http({
+    url: `${this.$storage.get("sessionTable")}/update`,
+    method: "post",
+    data: this.user  // 发送整个用户对象
+})
+```
+
+3. **问题总结：**
+   - ❌ 前端通过`/session`接口获取包含**明文密码**的用户信息
+   - ❌ 前端在浏览器中直接比较输入的密码和明文密码（严重安全漏洞）
+   - ❌ 如果密码不匹配，前端直接拦截，不发送请求到后端
+   - ❌ 使用的是`/update`接口而不是`/updatePassword`接口
+   - ❌ `/update`接口是通用更新接口，不做密码验证，不刷新token
+   - ❌ 我们修改的`/updatePassword`接口根本没有被调用！
+
+**后端session接口的安全漏洞：**
+
+**文件：** `server/src/main/java/com/controller/UsersController.java:185-190`
+
+```java
+@RequestMapping("/session")
+public R getCurrUser(HttpServletRequest request){
+    Integer id = (Integer)request.getSession().getAttribute("userId");
+    UsersEntity user = usersService.selectById(id);
+    return R.ok().put("data", user);  // ❌ 返回包含明文密码的用户对象
+}
+```
+
+**安全问题：**
+- session接口直接返回完整的用户实体，包括明文密码
+- 前端可以获取到用户的明文密码
+- 这是严重的安全漏洞！
+
+**update vs updatePassword 接口对比：**
+
+| 特性 | `/update` | `/updatePassword` |
+|------|-----------|-------------------|
+| **参数** | 整个用户对象 | oldPassword, newPassword |
+| **请求方法** | POST | GET |
+| **密码验证** | ❌ 无验证 | ✅ 验证旧密码（MD5） |
+| **Token刷新** | ❌ 不刷新 | ✅ 刷新并返回 |
+| **用途** | 通用更新接口 | 专门修改密码 |
+| **安全性** | 低（前端验证） | 高（后端验证） |
 
 **Uni-Mall (移动端)：**
 - **文件：** `uni-mall/pages/changepassword/changepassword.vue:45-47`
@@ -90,18 +153,239 @@ public R updatePassword(String oldPassword, String newPassword, HttpServletReque
 
 ## 实现方案
 
-### 技术方案选择
+### 最终确定的技术方案（用户确认版本）
 
-采用**方案2：生成新token并返回给前端**，理由如下：
+**核心原则：**
+1. ✅ 使用专门的`/updatePassword`接口（不使用`/update`接口）
+2. ✅ 前端不调用`/session`接口获取用户信息（避免明文密码暴露）
+3. ✅ 前端直接将oldPassword和newPassword传给后端
+4. ✅ 后端进行所有验证（MD5加密比对）
+5. ✅ 密码修改成功后自动刷新token
 
-**优点：**
-- ✅ 用户体验最好：无需重新登录
-- ✅ 实现简单：利用现有的generateToken()机制
-- ✅ 自动失效旧token：新token覆盖数据库中的旧token
-- ✅ 安全性提升：修改密码后立即让旧token失效
+**接口职责明确划分：**
+- **`/update`接口**：用于更新用户的姓名、电话、地址等**非密码**信息（系统其他地方还在使用）
+- **`/updatePassword`接口**：专门用于修改密码，包含验证、加密、token刷新等完整流程
 
-**权衡：**
-- ⚠️ 其他设备仍然有旧token（但1小时后自动过期）
+### 实现流程详解
+
+#### 完整数据流
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     前端（管理后台）                          │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            │ 1. 用户输入：旧密码、新密码、确认密码
+                            │
+                            ▼
+                    ┌───────────────┐
+                    │ 前端验证逻辑   │
+                    └───────────────┘
+                            │
+                            ├─ 新密码和确认密码是否一致？
+                            │   不一致 → 提示"两次密码输入不一致"
+                            │
+                            ▼ 一致
+                            │
+                            │ 2. 调用后端接口
+                            │    GET /{table}/updatePassword
+                            │    参数：oldPassword, newPassword
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                     后端（Spring Boot）                       │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            │ 3. 接收参数
+                            │    - oldPassword（前端传来的明文旧密码）
+                            │    - newPassword（前端传来的明文新密码）
+                            │
+                            ▼
+                    ┌───────────────┐
+                    │  从session获取  │
+                    │  当前登录用户ID │
+                    └───────────────┘
+                            │
+                            ▼
+                    ┌───────────────┐
+                    │  查询数据库获取  │
+                    │  用户信息（密码）│
+                    └───────────────┘
+                            │
+                            ▼
+                    ┌───────────────┐
+                    │  MD5加密旧密码  │
+                    │  与数据库对比    │
+                    └───────────────┘
+                            │
+                            ├─ 不匹配 → 返回错误"原密码输入错误"
+                            │
+                            ▼ 匹配
+                            │
+                    ┌───────────────┐
+                    │  MD5加密新密码  │
+                    │  更新到数据库    │
+                    └───────────────┘
+                            │
+                            ▼
+                    ┌───────────────┐
+                    │  生成新token   │
+                    │  调用tokenService│
+                    └───────────────┘
+                            │
+                            ▼
+                    ┌───────────────┐
+                    │  返回响应       │
+                    │  包含新token    │
+                    └───────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                     前端（管理后台）                          │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            │ 4. 接收响应
+                            │    - 检查响应中是否包含token
+                            │
+                            ▼
+                    ┌───────────────┐
+                    │  更新localStorage│
+                    │  存储新token    │
+                    └───────────────┘
+                            │
+                            ▼
+                    ┌───────────────┐
+                    │  提示"修改成功" │
+                    │  清空表单       │
+                    └───────────────┘
+```
+
+#### 后端详细处理流程
+
+**Step 1: 接收参数**
+```java
+@GetMapping(value = "/updatePassword")
+public R updatePassword(String oldPassword, String newPassword, HttpServletRequest request)
+```
+
+**Step 2: 获取当前用户**
+```java
+// 从session中获取当前登录用户的ID
+Integer userId = (Integer) request.getSession().getAttribute("userId");
+
+// 根据ID查询用户信息
+UsersEntity users = usersService.selectById(userId);
+```
+
+**Step 3: 验证旧密码**
+```java
+// 将前端传来的旧密码进行MD5加密
+String oldPasswordMd5 = DigestUtils.md5Hex(oldPassword);
+
+// 与数据库中的密码对比
+if (!oldPasswordMd5.equals(users.getPassword())) {
+    return R.error("原密码输入错误");
+}
+```
+
+**Step 4: 更新新密码**
+```java
+// 将新密码进行MD5加密
+String newPasswordMd5 = DigestUtils.md5Hex(newPassword);
+
+// 更新到数据库
+users.setPassword(newPasswordMd5);
+usersService.updateById(users);
+```
+
+**Step 5: 生成并返回新token**
+```java
+// 生成新token（会自动覆盖旧token）
+String newToken = tokenService.generateToken(
+    users.getId(),
+    users.getUsername(),
+    "users",  // 表名
+    users.getRole()  // 角色
+);
+
+// 返回给前端
+R r = R.ok("密码修改成功");
+r.put("token", newToken);
+return r;
+```
+
+#### 前端详细处理流程
+
+**Step 1: 表单验证**
+```javascript
+// 验证新密码和确认密码是否一致
+if (this.ruleForm.newpassword != this.ruleForm.repassword) {
+    this.$message.error("两次密码输入不一致");
+    return;
+}
+```
+
+**Step 2: 调用后端接口**
+```javascript
+this.$http({
+    url: `${this.$storage.get("sessionTable")}/updatePassword`,
+    method: "get",  // 使用GET请求
+    params: {
+        oldPassword: this.ruleForm.password,      // 明文旧密码
+        newPassword: this.ruleForm.newpassword    // 明文新密码
+    }
+})
+```
+
+**Step 3: 处理响应**
+```javascript
+.then(({ data }) => {
+    if (data && data.code === 0) {
+        // 检查响应中是否包含新token
+        if (data.token) {
+            // 更新localStorage中的token
+            this.$storage.set("Token", data.token);
+        }
+
+        // 提示成功
+        this.$message({
+            message: "修改密码成功",
+            type: "success"
+        });
+
+        // 清空表单
+        this.ruleForm = {};
+        this.$refs["ruleForm"].resetFields();
+    } else {
+        // 显示错误信息（如"原密码输入错误"）
+        this.$message.error(data.msg);
+    }
+})
+```
+
+### 方案优点
+
+| 优点 | 说明 |
+|------|------|
+| ✅ **职责明确** | updatePassword专注于密码修改，不影响update接口的其他用途 |
+| ✅ **安全性高** | 密码验证在后端进行（MD5比对），前端不接触数据库密码 |
+| ✅ **无明文泄露** | 前端不调用session接口，避免获取明文密码 |
+| ✅ **用户体验好** | 无需重新登录，token自动刷新 |
+| ✅ **自动失效旧token** | 新token覆盖数据库中的旧token |
+| ✅ **改动最小** | 只修改商家和管理员的updatePassword接口调用 |
+| ✅ **向后兼容** | 不影响其他功能，update接口保持不变 |
+
+### 适用范围
+
+**本次修改范围：**
+- ✅ **商家（Shangjia）**：修改后端updatePassword接口 + 前端调用方式
+- ✅ **管理员（Users）**：修改后端updatePassword接口 + 前端调用方式
+- ❌ **普通用户（Yonghu）**：已测试通过，不修改
+
+**不修改的内容：**
+- ❌ 不修改update接口（系统其他地方还在使用）
+- ❌ 不修改session接口（虽然存在安全问题，但本次不处理）
+- ❌ 不修改移动端（uni-mall）
 - ⚠️ 如果用户在多个设备同时修改密码，最后修改的生效
 
 ### 实现原理
@@ -339,41 +623,178 @@ private TokenService tokenService;
 
 ---
 
-### Phase 2: Client (管理后台) Token更新
+### Phase 2: Client (管理后台) 修复安全问题并正确对接updatePassword接口
 
-**目标：** 修改管理后台的密码修改页面，在收到成功响应后更新localStorage中的token。
+**⚠️ 重要发现：** 前端实现存在严重安全问题，需要重构整个密码修改逻辑！
 
-#### 2.1 修改密码成功处理逻辑
+#### 2.1 问题分析
 
-**文件：** `client/src/views/update-password.vue`
-**位置：** 行98-110
-
-**当前代码：**
-```javascript
-this.$http({
-    url: `${this.tableName}/update`,
-    method: "post",
-    data: this.user
-}).then(({ data }) => {
-    if (data && data.code === 0) {
-        this.$message({
-            message: "修改密码成功,下次登录系统生效",
-            type: "success",
-            duration: 1500
-        });
-    }
-});
+**当前错误的实现流程：**
+```
+1. GET /session → 获取包含明文密码的用户对象
+2. 前端在浏览器中比较输入的密码和session中的明文密码
+3. 如果不匹配，前端直接拦截（不发送请求）
+4. 如果匹配，POST /update → 发送整个用户对象（包括新密码）
 ```
 
-**修改后代码：**
+**存在的问题：**
+- ❌ session接口返回明文密码（严重安全漏洞）
+- ❌ 前端进行明文密码验证（不安全）
+- ❌ 使用update接口而不是updatePassword接口
+- ❌ update接口不做密码验证，不刷新token
+- ❌ 我们修改的updatePassword接口根本没有被调用！
+
+#### 2.2 正确的实现流程
+
+```
+1. 用户输入原密码、新密码、确认密码
+2. 前端验证：新密码和确认密码是否一致
+3. 调用 GET /{table}/updatePassword?oldPassword=xxx&newPassword=yyy
+4. 后端验证原密码是否正确（MD5比对）
+5. 后端更新密码
+6. 后端生成新token
+7. 后端返回新token
+8. 前端更新localStorage中的token
+```
+
+#### 2.3 修改onUpdateHandler方法
+
+**文件：** `client/src/views/update-password.vue`
+**位置：** 行69-113
+
+**需要删除的不安全代码：**
 ```javascript
+// ❌ 删除这段前端明文密码验证
+var password = "";
+if (this.user.mima) {
+    password = this.user.mima;
+} else if (this.user.password) {
+    password = this.user.password;
+}
+if (this.ruleForm.password != password) {
+    this.$message.error("原密码错误");
+    return;
+}
+
+// ❌ 删除这段错误的API调用
+this.user.password = this.ruleForm.newpassword;
+this.user.mima = this.ruleForm.newpassword;
 this.$http({
-    url: `${this.tableName}/update`,
+    url: `${this.$storage.get("sessionTable")}/update`,
     method: "post",
     data: this.user
-}).then(({ data }) => {
-    if (data && data.code === 0) {
-        // 1. 检查响应中是否包含新token
+})
+```
+
+**修改后的完整代码：**
+```javascript
+// 修改密码
+onUpdateHandler() {
+  this.$refs["ruleForm"].validate(valid => {
+    if (valid) {
+      // 1. 前端只验证：新密码和确认密码是否一致
+      if (this.ruleForm.newpassword != this.ruleForm.repassword) {
+        this.$message.error("两次密码输入不一致");
+        return;
+      }
+
+      // 2. 使用updatePassword接口，让后端验证原密码
+      this.$http({
+        url: `${this.$storage.get("sessionTable")}/updatePassword`,
+        method: "get",
+        params: {
+          oldPassword: this.ruleForm.password,
+          newPassword: this.ruleForm.newpassword
+        }
+      }).then(({ data }) => {
+        if (data && data.code === 0) {
+          // 3. 检查响应中是否包含新token并更新
+          if (data.token) {
+            this.$storage.set("Token", data.token);
+          }
+
+          // 4. 显示成功消息
+          this.$message({
+            message: data.token ? "修改密码成功,token已更新" : "修改密码成功",
+            type: "success",
+            duration: 1500,
+            onClose: () => {
+              // 清空表单
+              this.ruleForm = {};
+              this.$refs["ruleForm"].resetFields();
+            }
+          });
+        } else {
+          // 5. 显示错误消息（如"原密码错误"）
+          this.$message.error(data.msg);
+        }
+      });
+    }
+  });
+}
+```
+
+#### 2.4 修改说明
+
+**关键改进：**
+
+1. **移除前端明文密码验证**
+   - 删除了从session对象获取明文密码的代码
+   - 删除了前端明文密码比较的逻辑
+   - 原密码验证交给后端处理
+
+2. **改用updatePassword接口**
+   - 从`POST /update`改为`GET /updatePassword`
+   - 参数从整个用户对象改为`oldPassword`和`newPassword`
+   - 利用后端的MD5密码验证机制
+
+3. **添加token更新逻辑**
+   - 检查响应中是否包含新token
+   - 如果包含，更新localStorage中的token
+   - 兼容旧版本后端（不返回token的情况）
+
+4. **改进用户体验**
+   - 更新成功提示消息（区分token是否更新）
+   - 成功后清空表单
+   - 错误时显示后端返回的具体错误信息
+
+#### 2.5 安全改进对比
+
+| 改进项 | 之前 | 现在 |
+|--------|------|------|
+| **密码验证位置** | 前端（明文） | 后端（MD5） |
+| **密码传输** | 整个用户对象 | 仅密码参数 |
+| **使用的接口** | /update（通用） | /updatePassword（专用） |
+| **Token刷新** | ❌ 不刷新 | ✅ 自动刷新 |
+| **安全风险** | 高（明文暴露） | 低（后端验证） |
+| **session接口依赖** | 需要返回明文密码 | 不需要密码字段 |
+
+#### 2.6 额外的安全修复建议
+
+**修复session接口的安全漏洞：**
+
+**文件：** `server/src/main/java/com/controller/UsersController.java:185-190`
+**文件：** `server/src/main/java/com/controller/ShangjiaController.java:434-449`
+**文件：** `server/src/main/java/com/controller/YonghuController.java:459-474`
+
+**建议修改：** 在返回用户信息前清除密码字段
+
+```java
+@RequestMapping("/session")
+public R getCurrUser(HttpServletRequest request){
+    Integer id = (Integer)request.getSession().getAttribute("userId");
+    UsersEntity user = usersService.selectById(id);
+    user.setPassword(null);  // ✅ 清除密码字段
+    return R.ok().put("data", user);
+}
+```
+
+**为什么这个修复很重要：**
+- 防止前端获取明文密码
+- 即使前端代码有漏洞，也不会暴露密码
+- 符合安全最佳实践（不在响应中包含敏感信息）
+
+**注意：** 这个修复是可选的，因为前端已经不再使用session中的密码字段了。但从安全角度来说，强烈建议修复。
         if (data.token) {
             // 2. 更新localStorage中的token
             this.$storage.set("Token", data.token);
@@ -805,12 +1226,150 @@ if (tokenRefreshEnabled) {
 
 这些方法展示了如何生成和返回token，密码修改可以遵循相同模式。
 
+## 实施过程中发现的问题
+
+### 问题1：前端调用错误的接口
+
+**发现时间：** Phase 2实施阶段
+
+**问题描述：**
+原计划假设前端调用的是`/updatePassword`接口，但实际代码检查发现前端调用的是`/update`接口。
+
+**影响：**
+- 我们修改的`/updatePassword`接口根本没有被使用
+- `/update`接口不做密码验证，直接更新整个用户对象
+- `/update`接口不刷新token，无法实现安全目标
+
+**解决方案：**
+修改前端代码，从调用`/update`改为调用`/updatePassword`接口。
+
+**教训：**
+在制定实施计划前，应该充分检查现有代码的实际调用关系，不能仅根据接口名称做假设。
+
+### 问题2：前端存在严重安全漏洞
+
+**发现时间：** Phase 2代码审查阶段
+
+**问题描述：**
+前端实现存在多个严重安全问题：
+
+1. **session接口返回明文密码**
+   ```java
+   // UsersController.java:189
+   return R.ok().put("data", user);  // 包含明文密码
+   ```
+
+2. **前端进行明文密码验证**
+   ```javascript
+   // update-password.vue:84-87
+   if (this.ruleForm.password != password) {
+       this.$message.error("原密码错误");
+       return;  // 前端拦截，不发送请求
+   }
+   ```
+
+3. **前端明文密码比较**
+   ```javascript
+   // update-password.vue:79-83
+   var password = "";
+   if (this.user.mima) {
+       password = this.user.mima;  // 明文密码
+   } else if (this.user.password) {
+       password = this.user.password;  // 明文密码
+   }
+   ```
+
+**安全风险：**
+- ❌ 明文密码暴露到前端浏览器
+- ❌ 任何人可以通过浏览器开发者工具查看用户密码
+- ❌ 明文密码在网络传输中（即使有HTTPS也有风险）
+- ❌ 违反基本安全原则（密码永远不应该离开后端）
+
+**解决方案：**
+1. 修改前端，移除明文密码验证逻辑
+2. 改用`/updatePassword`接口，让后端进行MD5密码验证
+3. （可选但推荐）修改session接口，返回前清除密码字段
+
+**代码修复：**
+```javascript
+// ✅ 正确的做法：让后端验证密码
+this.$http({
+    url: `${this.$storage.get("sessionTable")}/updatePassword`,
+    method: "get",
+    params: {
+        oldPassword: this.ruleForm.password,
+        newPassword: this.ruleForm.newpassword
+    }
+})
+```
+
+### 问题3：updatePassword接口与update接口的区别
+
+**发现时间：** 实施前的接口分析阶段
+
+**接口对比：**
+
+| 特性 | `/update` | `/updatePassword` |
+|------|-----------|-------------------|
+| **参数** | 整个用户对象 | oldPassword, newPassword |
+| **请求方法** | POST | GET |
+| **密码验证** | ❌ 无验证 | ✅ 验证旧密码（MD5） |
+| **Token刷新** | ❌ 不刷新 | ✅ 刷新并返回 |
+| **用途** | 通用更新接口 | 专门修改密码 |
+| **安全性** | 低 | 高 |
+
+**为什么前端应该使用updatePassword：**
+1. ✅ 专门的密码修改接口，语义清晰
+2. ✅ 后端验证旧密码，更安全
+3. ✅ 自动刷新token，提升安全性
+4. ✅ 参数简单，只传递密码
+5. ✅ 符合安全最佳实践
+
+### 问题4：计划与实际的差异
+
+**原计划假设：**
+- 前端调用`/updatePassword`接口
+- 只需在前端添加token更新逻辑
+
+**实际情况：**
+- 前端调用的是`/update`接口
+- 前端存在严重安全漏洞
+- 需要重构整个密码修改流程
+
+**改进措施：**
+1. 在制定计划前进行更详细的代码审查
+2. 不仅要看接口定义，还要看实际调用
+3. 重视代码安全问题，而不仅仅是功能实现
+4. 在计划中增加"问题发现"章节，记录经验教训
+
+### 总结
+
+这次实施过程中发现的问题提醒我们：
+
+1. **充分调研很重要**
+   - 不能仅根据接口名称假设实现
+   - 必须检查实际的代码调用关系
+
+2. **安全审查很有必要**
+   - 功能实现不是唯一目标
+   - 安全性同样重要，甚至更重要
+
+3. **发现问题要及时调整计划**
+   - 原计划可能基于错误的假设
+   - 发现问题后要勇于调整方向
+
+4. **文档要反映真实情况**
+   - 计划文档应该记录发现的问题
+   - 帮助后续开发者避免同样的错误
+
+这些发现虽然增加了工作量，但提升了系统的安全性，避免了更严重的安全问题。从长远来看，这是非常值得的。
+
 ## 总结
 
 本计划实现了修改密码后自动刷新token的功能，通过以下三个阶段：
 
 1. **Phase 1（后端）：** 修改三个controller的updatePassword方法，在密码修改成功后生成并返回新token
-2. **Phase 2（Client前端）：** 修改管理后台密码修改页面，更新localStorage中的token
+2. **Phase 2（Client前端）：** 修改管理后台密码修改页面，更新localStorage中的token，并修复严重安全漏洞
 3. **Phase 3（Uni-Mall前端）：** 修改移动端密码修改页面，更新uni.storage中的token
 
 **关键优势：**
@@ -820,7 +1379,20 @@ if (tokenRefreshEnabled) {
 - ✅ 安全性提升，旧token立即失效
 - ✅ 实现简单，代码改动量小
 
+**额外收获 - 修复严重安全漏洞：**
+- ✅ 移除前端明文密码验证（原来在浏览器中比较明文密码）
+- ✅ 改用后端MD5密码验证（更安全的方式）
+- ✅ 修改前端调用正确的接口（从update改为updatePassword）
+- ✅ 修复了前端可以获取用户明文密码的问题
+
 **预期效果：**
 - 用户修改密码后能继续使用系统，不需要重新登录
 - 修改密码后旧token立即失效，减少安全风险
+- 密码验证在后端进行，符合安全最佳实践
 - 对现有系统无破坏性影响
+
+**实施经验：**
+- 在制定计划前要进行充分的代码审查
+- 不仅要看接口定义，还要检查实际调用
+- 发现安全问题要优先修复
+- 计划要灵活调整，反映真实情况
