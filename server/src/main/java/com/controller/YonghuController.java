@@ -170,8 +170,28 @@ public class YonghuController {
                 yonghu.setYonghuPhoto(null);
         }
 
-            yonghuService.updateById(yonghu);//根据id更新
-            return R.ok();
+        // 检测密码是否被修改
+        boolean passwordChanged = false;
+        if(yonghu.getPassword() != null && !yonghu.getPassword().equals(oldYonghuEntity.getPassword())){
+            passwordChanged = true;
+        }
+
+        yonghuService.updateById(yonghu);//根据id更新
+
+        // 如果密码被修改，生成新token
+        if(passwordChanged){
+            Integer userId = yonghu.getId();
+            String username = yonghu.getUsername();
+            String tableName = "yonghu";
+            String userRole = "用户";
+            String newToken = tokenService.generateToken(userId, username, tableName, userRole);
+
+            R r = R.ok("密码修改成功");
+            r.put("token", newToken);
+            return r;
+        }
+
+        return R.ok();
     }
 
 
@@ -413,9 +433,22 @@ public class YonghuController {
 		if(DigestUtils.md5Hex(newPassword).equals(yonghu.getPassword())){
 			return R.error("新密码不能和原密码一致") ;
 		}
+
+		// 1. 更新密码
         yonghu.setPassword(DigestUtils.md5Hex(newPassword));
 		yonghuService.updateById(yonghu);
-		return R.ok();
+
+		// 2. 生成新token
+		Integer userId = yonghu.getId();
+		String username = yonghu.getUsername();
+		String tableName = "yonghu";
+		String role = "用户";
+		String newToken = tokenService.generateToken(userId, username, tableName, role);
+
+		// 3. 返回新token
+		R r = R.ok("密码修改成功");
+		r.put("token", newToken);
+		return r;
 	}
 
 
