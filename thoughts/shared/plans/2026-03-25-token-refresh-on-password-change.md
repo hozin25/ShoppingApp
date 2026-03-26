@@ -405,6 +405,108 @@ this.$http({
 
 ## 实施阶段
 
+### Phase 0: 回退错误的修改（重要！）
+
+**⚠️ 在开始实施前，必须先回退之前错误添加的代码！**
+
+**目标：** 回退对 YonghuController 的 /update 接口的错误修改，恢复其原本的简单功能。
+
+#### 0.1 回退 YonghuController.update() 方法
+
+**文件：** `server/src/main/java/com/controller/YonghuController.java`
+**位置：** 行173-192
+
+**需要删除的代码：**
+```java
+// ❌ 删除这些代码
+// 检测密码是否被修改
+boolean passwordChanged = false;
+if(yonghu.getPassword() != null && !yonghu.getPassword().equals(oldYonghuEntity.getPassword())){
+    passwordChanged = true;
+}
+
+yonghuService.updateById(yonghu);//根据id更新
+
+// 如果密码被修改，生成新token
+if(passwordChanged){
+    Integer userId = yonghu.getId();
+    String username = yonghu.getUsername();
+    String tableName = "yonghu";
+    String userRole = "用户";
+    String newToken = tokenService.generateToken(userId, username, tableName, userRole);
+
+    R r = R.ok("密码修改成功");
+    r.put("token", newToken);
+    return r;
+}
+```
+
+**修改后应该是：**
+```java
+@RequestMapping("/update")
+public R update(@RequestBody YonghuEntity yonghu, HttpServletRequest request) throws NoSuchFieldException, ClassNotFoundException, IllegalAccessException, InstantiationException {
+    logger.debug("update方法:,,Controller:{},,yonghu:{}",this.getClass().getName(),yonghu.toString());
+    YonghuEntity oldYonghuEntity = yonghuService.selectById(yonghu.getId());//查询原先数据
+
+    String role = String.valueOf(request.getSession().getAttribute("role"));
+    if("".equals(yonghu.getYonghuPhoto()) || "null".equals(yonghu.getYonghuPhoto())){
+        yonghu.setYonghuPhoto(null);
+    }
+
+    yonghuService.updateById(yonghu);//根据id更新
+    return R.ok();
+}
+```
+
+#### 0.2 验证回退是否正确
+
+**检查清单：**
+- [ ] YonghuController 的 /update 接口不再包含密码修改逻辑
+- [ ] YonghuController 的 /update 接口仍然能正常更新非密码字段
+- [ ] UsersController 的 /update 接口没有被修改（本来就是正确的）
+- [ ] ShangjiaController 的 /update 接口没有被修改（本来就是正确的）
+- [ ] 三个controller的 /updatePassword 接口都保持了正确的实现
+
+#### 0.3 为什么必须回退
+
+**原因说明：**
+
+1. **职责分离原则**
+   - /update 接口：用于更新姓名、电话、地址等基本信息
+   - /updatePassword 接口：专门用于修改密码
+
+2. **避免影响其他功能**
+   - 系统其他地方可能还在使用 /update 接口
+   - 添加密码修改逻辑可能导致意外的副作用
+
+3. **代码清晰度**
+   - /update 接口保持简单，易于理解
+   - /updatePassword 接口集中处理密码相关的所有逻辑
+
+4. **维护性**
+   - 密码修改逻辑集中在一个地方，便于维护
+   - 减少代码重复，降低维护成本
+
+**不回退的风险：**
+- ❌ 未来维护人员可能误解 /update 接口的用途
+- ❌ 其他功能使用 /update 接口时可能出现意外行为
+- ❌ 代码逻辑分散，增加理解和维护难度
+
+### 成功标准：
+
+#### 自动化验证：
+- [ ] 后端编译成功：`cd server && mvn clean compile`
+- [ ] 没有编译错误或警告
+
+#### 手动验证：
+- [ ] 使用Postman测试 `POST /yonghu/update`，确认能正常更新非密码字段
+- [ ] 验证 /update 接口不再返回 token 字段
+- [ ] 验证 /updatePassword 接口仍然正常工作并返回 token
+
+**实施注意：** 完成回退后，请务必测试一下 /update 接口，确保其他使用该接口的功能（如更新用户信息）仍然正常工作。
+
+---
+
 ### Phase 1: 后端Token刷新功能
 
 **目标：** 修改三个controller的updatePassword方法，在密码修改成功后生成并返回新token。
@@ -1228,7 +1330,81 @@ if (tokenRefreshEnabled) {
 
 ## 实施过程中发现的问题
 
-### 问题1：前端调用错误的接口
+### 问题1：错误地修改了 /update 接口
+
+**发现时间：** 用户反馈阶段
+
+**问题描述：**
+在实施过程中，错误地修改了 YonghuController 的 /update 接口，添加了密码修改和token刷新逻辑。这是错误的，因为：
+
+1. /update 接口是通用更新接口，用于更新姓名、电话、地址等**非密码**字段
+2. 系统其他地方可能还在使用 /update 接口，修改它可能影响其他功能
+3. /update 接口应该保持简单，只负责更新用户的基本信息
+4. 密码修改应该**只**通过 /updatePassword 接口处理
+
+**错误代码（YonghuController.java:173-192）：**
+```java
+// ❌ 错误：在 /update 接口中添加了密码修改逻辑
+// 检测密码是否被修改
+boolean passwordChanged = false;
+if(yonghu.getPassword() != null && !yonghu.getPassword().equals(oldYonghuEntity.getPassword())){
+    passwordChanged = true;
+}
+
+yonghuService.updateById(yonghu);//根据id更新
+
+// 如果密码被修改，生成新token
+if(passwordChanged){
+    Integer userId = yonghu.getId();
+    String username = yonghu.getUsername();
+    String tableName = "yonghu";
+    String userRole = "用户";
+    String newToken = tokenService.generateToken(userId, username, tableName, userRole);
+
+    R r = R.ok("密码修改成功");
+    r.put("token", newToken);
+    return r;
+}
+```
+
+**影响：**
+- ❌ /update 接口职责混乱，既处理基本字段更新，又处理密码修改
+- ❌ 违反单一职责原则
+- ❌ 可能影响系统其他地方使用 /update 接口的功能
+- ❌ 增加了代码复杂度和维护成本
+
+**解决方案：**
+1. **回退 /update 接口的修改**：移除密码修改逻辑（lines 173-192）
+2. **只修改 /updatePassword 接口**：所有密码修改操作都通过这个接口
+3. **前端改为调用 /updatePassword 接口**：不再调用 /update 接口修改密码
+
+**正确的 /update 接口应该是：**
+```java
+@RequestMapping("/update")
+public R update(@RequestBody YonghuEntity yonghu, HttpServletRequest request) throws NoSuchFieldException, ClassNotFoundException, IllegalAccessException, InstantiationException {
+    logger.debug("update方法:,,Controller:{},,yonghu:{}",this.getClass().getName(),yonghu.toString());
+    YonghuEntity oldYonghuEntity = yonghuService.selectById(yonghu.getId());//查询原先数据
+
+    String role = String.valueOf(request.getSession().getAttribute("role"));
+    if("".equals(yonghu.getYonghuPhoto()) || "null".equals(yonghu.getYonghuPhoto())){
+        yonghu.setYonghuPhoto(null);
+    }
+
+    yonghuService.updateById(yonghu);//根据id更新
+    return R.ok();
+}
+```
+
+**接口职责明确划分：**
+- **/update 接口**：更新姓名、电话、地址等非密码字段（系统其他地方还在使用）
+- **/updatePassword 接口**：专门修改密码，包含验证、加密、token刷新等完整流程
+
+**注意：**
+- ✅ UsersController 和 ShangjiaController 的 /update 接口没有被错误修改
+- ✅ 只有 YonghuController 的 /update 接口需要回退
+- ✅ 三个controller的 /updatePassword 接口都已正确实现
+
+### 问题2：前端调用错误的接口
 
 **发现时间：** Phase 2实施阶段
 
@@ -1396,3 +1572,18 @@ this.$http({
 - 不仅要看接口定义，还要检查实际调用
 - 发现安全问题要优先修复
 - 计划要灵活调整，反映真实情况
+- **重要的是：接口职责要明确分离，避免把密码修改逻辑混入通用的更新接口中**
+- **在修改现有接口前，要考虑该接口是否被其他功能使用**
+- **如果发现修改了错误的接口，要及时回退，而不是试图"修复"错误的实现**
+
+**关键教训：**
+1. ❌ **错误做法**：修改通用的 /update 接口添加密码修改功能
+2. ✅ **正确做法**：使用专门的 /updatePassword 接口处理密码修改
+3. ❌ **错误做法**：假设可以修改一个接口来处理多个职责
+4. ✅ **正确做法**：保持接口职责单一，一个接口只做一件事
+
+这次实现虽然走了些弯路（错误地修改了 /update 接口），但最终找到了正确的实现方式，并且：
+- 修复了严重的安全漏洞（前端明文密码验证）
+- 实现了密码修改后自动刷新token的功能
+- 保持了接口职责的清晰分离
+- 不影响系统其他功能

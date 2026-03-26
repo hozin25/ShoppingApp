@@ -208,8 +208,18 @@ export const update = (tableName, data) => {
 	});
 }
 /**
+ * 修改密码 updatePassword
+ */
+export const updatePassword = (tableName, data) => {
+	return http.request({
+		url: `${tableName}/updatePassword`,
+		method: 'GET',
+		data
+	});
+}
+/**
  * 删除 del
- */ 
+ */
 export const del = (tableName, data) => {
 	return http.request({
 		url: `${tableName}/delete`,
@@ -326,6 +336,7 @@ export default {
 	page, // 查询 page
 	add, // 添加
 	update, // 修改
+	updatePassword, // 修改密码
 	del, // 删除
 	info, // 单条信息查询,
 	recommend, // 智能推荐

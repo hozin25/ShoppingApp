@@ -170,27 +170,7 @@ public class YonghuController {
                 yonghu.setYonghuPhoto(null);
         }
 
-        // 检测密码是否被修改
-        boolean passwordChanged = false;
-        if(yonghu.getPassword() != null && !yonghu.getPassword().equals(oldYonghuEntity.getPassword())){
-            passwordChanged = true;
-        }
-
         yonghuService.updateById(yonghu);//根据id更新
-
-        // 如果密码被修改，生成新token
-        if(passwordChanged){
-            Integer userId = yonghu.getId();
-            String username = yonghu.getUsername();
-            String tableName = "yonghu";
-            String userRole = "用户";
-            String newToken = tokenService.generateToken(userId, username, tableName, userRole);
-
-            R r = R.ok("密码修改成功");
-            r.put("token", newToken);
-            return r;
-        }
-
         return R.ok();
     }
 

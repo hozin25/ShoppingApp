@@ -31,20 +31,40 @@
 		},
 		methods: {
 			async tijiaoxuigai() {
+				console.log('=== 开始修改密码 ===');
+				console.log('旧密码:', this.ruleForm.jiumima);
+				console.log('新密码:', this.ruleForm.xinmima);
+				console.log('确认密码:', this.ruleForm.querenmima);
+
 				if(this.ruleForm.xinmima == this.ruleForm.jiumima){
 					this.$utils.msg(`新密码不能和旧密码一样`);
-					return 
+					return
 				}
 				if(this.ruleForm.xinmima != this.ruleForm.querenmima){
 					this.$utils.msg(`新密码和确认密码不一致`);
-					return 
+					return
 				}
-				
-				// 使用简单的MD5实现
-				this.user.password = this.md5(this.ruleForm.xinmima);
-				await this.$api.update(`yonghu`, this.user);
-				uni.setStorageSync('pingluenStateState', true);
-				this.$utils.msgBack('密码修改成功,下次登录时生效');
+
+				try {
+					console.log('=== 调用 updatePassword 接口 ===');
+					// 1. 调用 /updatePassword 接口，让后端验证旧密码
+					let res = await this.$api.updatePassword(`yonghu`, {
+						oldPassword: this.ruleForm.jiumima,
+						newPassword: this.ruleForm.xinmima
+					});
+					console.log('=== 接口响应 ===', res);
+
+					// 2. 检查响应中是否包含新token并更新
+					if (res && res.token) {
+						uni.setStorageSync("token", res.token);
+						this.$utils.msgBack('密码修改成功,token已更新');
+					} else {
+						this.$utils.msgBack('密码修改成功,下次登录时生效');
+					}
+				} catch (error) {
+					console.error('=== 修改密码出错 ===', error);
+					this.$utils.msg('密码修改失败：' + (error.msg || '未知错误'));
+				}
 			},
 			// 简单的MD5实现
 			md5(string) {
