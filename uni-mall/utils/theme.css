@@ -1,0 +1,14 @@
+page {
+	/* Tesla 风格主题色 */
+	--publicMainColor: #E82127;  /* Tesla Red - 主色调 */
+	--publicSubColor: #3E6AE1;   /* Tesla Blue - 次要色 */
+
+	/* Tesla 风格扩展颜色 */
+	--tesla-bg-primary: #FFFFFF;      /* 主背景色 */
+	--tesla-bg-secondary: #F9FAFB;    /* 次背景色 */
+	--tesla-text-primary: #171A20;    /* 主文字色 */
+	--tesla-text-secondary: #6B7280;  /* 次要文字色 */
+	--tesla-border: #E5E7EB;          /* 边框色 */
+	--tesla-divider: #F3F4F6;         /* 分隔线色 */
+	--tesla-card-shadow: 0 1px 3px rgba(0, 0, 0, 0.08); /* 卡片阴影 */
+}

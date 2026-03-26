@@ -1,0 +1,3 @@
+set SASS_BINARY_PATH=D:\project\win32-x64-83_binding.node
+npm install
+npm run serve

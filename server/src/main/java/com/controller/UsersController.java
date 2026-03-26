@@ -1,0 +1,251 @@
+
+package com.controller;
+
+import java.util.List;
+import java.util.Arrays;
+import java.util.Map;
+
+import javax.servlet.http.HttpServletRequest;
+
+import com.service.UsersService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.annotation.IgnoreAuth;
+import com.baomidou.mybatisplus.mapper.EntityWrapper;
+import com.entity.UsersEntity;
+import com.service.TokenService;
+import com.utils.MPUtil;
+import com.utils.PageUtils;
+import com.utils.R;
+import org.apache.commons.codec.digest.DigestUtils;
+
+/**
+ * 登录相关
+ */
+@RequestMapping("users")
+@RestController
+public class UsersController {
+	
+	@Autowired
+	private UsersService usersService;
+	
+	@Autowired
+	private TokenService tokenService;
+
+	/**
+	 * 登录
+	 */
+	@IgnoreAuth
+	@PostMapping(value = "/login")
+	public R login(String username, String password, String captcha, HttpServletRequest request) {
+		UsersEntity user = usersService.selectOne(new EntityWrapper<UsersEntity>().eq("username", username));
+		if(user==null) {
+			return R.error("账号或密码不正确");
+		}
+
+		// 检查密码格式，如果不是MD5格式（长度不是32），则进行密码升级
+		boolean needUpgrade = user.getPassword() != null && user.getPassword().length() != 32;
+		boolean passwordMatch = false;
+
+		if (needUpgrade) {
+			// 数据库存的是明文密码，直接比对
+			passwordMatch = user.getPassword().equals(password);
+			if (passwordMatch) {
+				// 验证成功，更新为MD5加密密码
+				user.setPassword(DigestUtils.md5Hex(password));
+				usersService.updateById(user);
+			}
+		} else {
+			// 数据库存的是MD5密码，使用MD5比对
+			passwordMatch = user.getPassword().equals(DigestUtils.md5Hex(password));
+		}
+
+		if (!passwordMatch) {
+			return R.error("账号或密码不正确");
+		}
+
+		String token = tokenService.generateToken(user.getId(),username, "users", user.getRole());
+		R r = R.ok();
+		r.put("token", token);
+		r.put("role",user.getRole());
+		r.put("userId",user.getId());
+		return r;
+	}
+	
+	/**
+	 * 注册
+	 */
+	@IgnoreAuth
+	@PostMapping(value = "/register")
+	public R register(@RequestBody UsersEntity user){
+//    	ValidatorUtils.validateEntity(user);
+    	if(usersService.selectOne(new EntityWrapper<UsersEntity>().eq("username", user.getUsername())) !=null) {
+    		return R.error("用户已存在");
+    	}
+        usersService.insert(user);
+        return R.ok();
+    }
+
+	/**
+	 * 退出
+	 */
+	@GetMapping(value = "logout")
+	public R logout(HttpServletRequest request) {
+		request.getSession().invalidate();
+		return R.ok("退出成功");
+	}
+
+	/**
+	 * 修改密码
+	 */
+	@GetMapping(value = "/updatePassword")
+	public R updatePassword(String  oldPassword, String  newPassword, HttpServletRequest request) {
+		UsersEntity users = usersService.selectById((Integer)request.getSession().getAttribute("userId"));
+		if(newPassword == null){
+			return R.error("新密码不能为空") ;
+		}
+		if(!DigestUtils.md5Hex(oldPassword).equals(users.getPassword())){
+			return R.error("原密码输入错误");
+		}
+		if(DigestUtils.md5Hex(newPassword).equals(users.getPassword())){
+			return R.error("新密码不能和原密码一致") ;
+		}
+
+		// 1. 更新密码
+		users.setPassword(DigestUtils.md5Hex(newPassword));
+		usersService.updateById(users);
+
+		// 2. 生成新token
+		Integer userId = users.getId();
+		String username = users.getUsername();
+		String tableName = "users";
+		String role = users.getRole();
+		String newToken = tokenService.generateToken(userId, username, tableName, role);
+
+		// 3. 返回新token
+		R r = R.ok("密码修改成功");
+		r.put("token", newToken);
+		return r;
+	}
+	
+	/**
+     * 密码重置
+     */
+    @IgnoreAuth
+	@RequestMapping(value = "/resetPass")
+    public R resetPass(String username, HttpServletRequest request){
+    	UsersEntity user = usersService.selectOne(new EntityWrapper<UsersEntity>().eq("username", username));
+    	if(user==null) {
+    		return R.error("账号不存在");
+    	}
+    	user.setPassword(DigestUtils.md5Hex("123456"));
+        usersService.update(user,null);
+        return R.ok("密码已重置为：123456");
+    }
+	
+	/**
+     * 列表
+     */
+    @RequestMapping("/page")
+    public R page(@RequestParam Map<String, Object> params,UsersEntity user){
+        EntityWrapper<UsersEntity> ew = new EntityWrapper<UsersEntity>();
+    	PageUtils page = usersService.queryPage(params, MPUtil.sort(MPUtil.between(MPUtil.allLike(ew, user), params), params));
+        return R.ok().put("data", page);
+    }
+
+	/**
+     * 列表
+     */
+    @RequestMapping("/list")
+    public R list( UsersEntity user){
+       	EntityWrapper<UsersEntity> ew = new EntityWrapper<UsersEntity>();
+      	ew.allEq(MPUtil.allEQMapPre( user, "user")); 
+        return R.ok().put("data", usersService.selectListView(ew));
+    }
+
+    /**
+     * 信息
+     */
+    @RequestMapping("/info/{id}")
+    public R info(@PathVariable("id") String id){
+        UsersEntity user = usersService.selectById(id);
+        return R.ok().put("data", user);
+    }
+    
+    /**
+     * 获取用户的session用户信息
+     */
+    @RequestMapping("/session")
+    public R getCurrUser(HttpServletRequest request){
+    	Integer id = (Integer)request.getSession().getAttribute("userId");
+        UsersEntity user = usersService.selectById(id);
+        user.setPassword(null);  // 安全修复：清除密码字段，防止明文密码泄露到前端
+        return R.ok().put("data", user);
+    }
+
+    /**
+     * 保存
+     */
+    @PostMapping("/save")
+    public R save(@RequestBody UsersEntity user){
+//    	ValidatorUtils.validateEntity(user);
+    	if(usersService.selectOne(new EntityWrapper<UsersEntity>().eq("username", user.getUsername())) !=null) {
+    		return R.error("用户已存在");
+    	}
+        usersService.insert(user);
+        return R.ok();
+    }
+
+    /**
+     * 修改
+     */
+    @RequestMapping("/update")
+    public R update(@RequestBody UsersEntity user){
+//        ValidatorUtils.validateEntity(user);
+        usersService.updateById(user);//全部更新
+        return R.ok();
+    }
+
+    /**
+     * 删除
+     */
+    @RequestMapping("/delete")
+    public R delete(@RequestBody Long[] ids){
+		List<UsersEntity> user = usersService.selectList(null);
+		if(user.size() > 1){
+			usersService.deleteBatchIds(Arrays.asList(ids));
+		}else{
+			return R.error("管理员最少保留一个");
+		}
+        return R.ok();
+    }
+
+    // 添加一个新的方法用于升级已有密码
+    @GetMapping(value = "/upgradePasswords")
+    @IgnoreAuth  // 仅在需要时使用，使用后请删除此接口
+    public R upgradePasswords() {
+        try {
+            List<UsersEntity> users = usersService.selectList(null);
+            int count = 0;
+            for (UsersEntity user : users) {
+                // 假设密码长度大于32的已经是MD5加密过的
+                if (user.getPassword() != null && user.getPassword().length() != 32) {
+                    user.setPassword(DigestUtils.md5Hex(user.getPassword()));
+                    usersService.updateById(user);
+                    count++;
+                }
+            }
+            return R.ok("成功更新 " + count + " 个管理员的密码");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return R.error("密码升级失败：" + e.getMessage());
+        }
+    }
+}
