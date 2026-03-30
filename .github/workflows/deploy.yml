@@ -16,7 +16,7 @@ permissions:
   checks: write  # 允许创建测试报告
 
 env:
-  JAVA_VERSION: '8'
+  JAVA_VERSION: '8'  # 服务器已配置Java 8环境
   NODE_VERSION: '20'
   MAVEN_VERSION: '3.9.12'
 
