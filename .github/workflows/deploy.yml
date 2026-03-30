@@ -90,7 +90,7 @@ jobs:
       - name: 安装依赖
         run: |
           cd client
-          npm ci
+          npm install
 
       - name: 代码检查
         continue-on-error: true  # 代码检查失败不阻止部署
