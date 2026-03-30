@@ -135,7 +135,7 @@ jobs:
         if: env.MOBILE_BUILD_SKIP != 'true'
         run: |
           cd uni-mall
-          npm ci
+          npm install
 
       - name: 构建移动端 H5
         if: env.MOBILE_BUILD_SKIP != 'true'
