@@ -11,6 +11,10 @@ on:
       - master
   workflow_dispatch:  # 允许手动触发
 
+permissions:
+  contents: read
+  checks: write  # 允许创建测试报告
+
 env:
   JAVA_VERSION: '21'
   NODE_VERSION: '20'
