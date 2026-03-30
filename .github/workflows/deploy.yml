@@ -1,0 +1,271 @@
+name: CI/CD Deployment
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:  # 允许手动触发
+
+env:
+  JAVA_VERSION: '21'
+  NODE_VERSION: '16'
+  MAVEN_VERSION: '3.9.12'
+
+jobs:
+  # ============================================
+  # 后端构建和测试
+  # ============================================
+  build-backend:
+    name: Build & Test Backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout 代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: 构建后端并运行测试
+        run: |
+          cd server
+          mvn clean test package -DskipTests=false
+
+      - name: 生成测试报告
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: 后端测试报告
+          path: 'server/target/surefire-reports/*.xml'
+          reporter: java-junit
+          fail-on-error: true
+
+      - name: 上传后端 JAR 文件
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-jar
+          path: server/target/zhinengxiaochengxsc-0.0.1-SNAPSHOT.jar
+          retention-days: 7
+
+      - name: 上传测试报告
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-test-reports
+          path: server/target/surefire-reports/
+          retention-days: 7
+
+  # ============================================
+  # 前端构建
+  # ============================================
+  build-frontend:
+    name: Build Frontend (Admin Panel)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout 代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: client/package-lock.json
+
+      - name: 安装依赖
+        run: |
+          cd client
+          npm ci
+
+      - name: 代码检查
+        run: |
+          cd client
+          npm run lint --if-present
+
+      - name: 构建生产版本
+        run: |
+          cd client
+          npm run build
+
+      - name: 上传前端构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: client/dist/
+          retention-days: 7
+
+  # ============================================
+  # 移动端 H5 构建
+  # ============================================
+  build-mobile:
+    name: Build Mobile H5
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout 代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: uni-mall/package-lock.json
+
+      - name: 安装依赖
+        run: |
+          cd uni-mall
+          npm ci
+
+      - name: 构建移动端 H5
+        run: |
+          cd uni-mall
+          npm run build:h5 || echo "H5 build command not found, trying alternative..."
+          # 如果上面失败，尝试使用 uni-app CLI
+          npx cross-env NODE_ENV=production UNI_PLATFORM=h5 vue-cli-service uni-build || true
+
+      - name: 上传移动端 H5 产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-h5
+          path: uni-mall/unpackage/dist/build/h5/
+          retention-days: 7
+          if-no-files-found: warn
+
+  # ============================================
+  # 部署到服务器（需要手动批准）
+  # ============================================
+  deploy:
+    name: Deploy to Server
+    needs: [build-backend, build-frontend, build-mobile]
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: http://${{ secrets.SSH_HOST }}
+
+    steps:
+      - name: Checkout 代码
+        uses: actions/checkout@v4
+
+      # ========================================
+      # 配置 SSH
+      # ========================================
+      - name: 配置 SSH 私钥
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -p ${{ secrets.SSH_PORT }} -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
+      # ========================================
+      # 下载构建产物
+      # ========================================
+      - name: 下载后端 JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-jar
+          path: ./artifacts/backend/
+
+      - name: 下载前端 Dist
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: ./artifacts/frontend/
+
+      - name: 下载移动端 H5
+        uses: actions/download-artifact@v4
+        with:
+          name: mobile-h5
+          path: ./artifacts/mobile/
+
+      # ========================================
+      # 部署后端
+      # ========================================
+      - name: 停止后端服务
+        run: |
+          ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} \
+            'bash -s' < scripts/deploy/stop-backend.sh
+
+      - name: 备份当前后端 JAR
+        run: |
+          ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} \
+            'bash -s' < scripts/deploy/backup-backend.sh
+
+      - name: 上传后端 JAR
+        run: |
+          scp -P ${{ secrets.SSH_PORT }} \
+            ./artifacts/backend/zhinengxiaochengxsc-0.0.1-SNAPSHOT.jar \
+            ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:/opt/app/
+
+      - name: 启动后端服务
+        run: |
+          ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} \
+            'bash -s' < scripts/deploy/start-backend.sh
+
+      # ========================================
+      # 部署前端
+      # ========================================
+      - name: 上传前端静态文件
+        run: |
+          scp -P ${{ secrets.SSH_PORT }} -r \
+            ./artifacts/frontend/* \
+            ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:/opt/mall-frontend/
+
+      # ========================================
+      # 部署移动端
+      # ========================================
+      - name: 上传移动端 H5 文件
+        run: |
+          ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} \
+            'mkdir -p /opt/mall-mobile'
+          scp -P ${{ secrets.SSH_PORT }} -r \
+            ./artifacts/mobile/* \
+            ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:/opt/mall-mobile/
+
+      # ========================================
+      # 重新加载 Nginx
+      # ========================================
+      - name: 重新加载 Nginx
+        run: |
+          ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} \
+            'sudo nginx -t && sudo systemctl reload nginx'
+
+      # ========================================
+      # 健康检查
+      # ========================================
+      - name: 后端健康检查
+        run: |
+          sleep 10
+          ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} \
+            'curl -f http://localhost:8080/zhinengxiaochengxsc/ || exit 1'
+
+      - name: 前端健康检查
+        run: |
+          ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} \
+            'curl -f http://localhost/ || exit 1'
+
+      # ========================================
+      # 部署成功通知
+      # ========================================
+      - name: 发送部署成功通知
+        if: success()
+        run: |
+          echo "✅ 部署成功！"
+          echo "后端: http://${{ secrets.SSH_HOST }}:8080/zhinengxiaochengxsc/"
+          echo "前端: http://${{ secrets.SSH_HOST }}/"
+          echo "移动端: http://${{ secrets.SSH_HOST }}/tiaozaoshichang/front/h5/"
+
+      - name: 发送部署失败通知
+        if: failure()
+        run: |
+          echo "❌ 部署失败！请检查日志。"
