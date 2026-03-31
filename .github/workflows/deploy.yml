@@ -115,63 +115,26 @@ jobs:
   # ============================================
   # 移动端 H5 构建
   # ============================================
+  # 注意: uni-mall 是基于 HBuilderX 的项目，需要使用 HBuilderX IDE 进行构建
+  # CI/CD 环境不支持 HBuilderX，因此暂时跳过移动端自动构建
   build-mobile:
-    name: Build Mobile H5
+    name: Build Mobile H5 (Skipped)
     runs-on: ubuntu-latest
-    continue-on-error: true  # 移动端构建失败不影响整体流程
+    if: false  # 禁用此任务
 
     steps:
-      - name: Checkout 代码
-        uses: actions/checkout@v4
-
-      - name: 设置 Node.js ${{ env.NODE_VERSION }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: 配置 npm 镜像源
+      - name: 跳过移动端构建
         run: |
-          npm config set registry https://registry.npmmirror.com
-          npm config set legacy-peer-deps true
-
-      - name: 检查移动端项目配置
-        run: |
-          if [ ! -f "uni-mall/package.json" ]; then
-            echo "⚠️ uni-mall/package.json 不存在，跳过移动端构建"
-            echo "MOBILE_BUILD_SKIP=true" >> $GITHUB_ENV
-          else
-            echo "✅ 找到 package.json，继续构建"
-            echo "MOBILE_BUILD_SKIP=false" >> $GITHUB_ENV
-          fi
-
-      - name: 安装依赖
-        if: env.MOBILE_BUILD_SKIP != 'true'
-        run: |
-          cd uni-mall
-          npm install
-
-      - name: 构建移动端 H5
-        if: env.MOBILE_BUILD_SKIP != 'true'
-        run: |
-          cd uni-mall
-          npm run build:h5 || echo "H5 build command not found, trying alternative..."
-          # 如果上面失败，尝试使用 uni-app CLI
-          npx cross-env NODE_ENV=production UNI_PLATFORM=h5 vue-cli-service uni-build || true
-
-      - name: 上传移动端 H5 产物
-        uses: actions/upload-artifact@v4
-        with:
-          name: mobile-h5
-          path: uni-mall/unpackage/dist/build/h5/
-          retention-days: 7
-          if-no-files-found: warn
+          echo "⚠️ 移动端构建已跳过"
+          echo "uni-mall 项目需要使用 HBuilderX 进行构建"
+          echo "请参考 README.md 中的移动端构建说明"
 
   # ============================================
   # 部署到服务器（需要手动批准）
   # ============================================
   deploy:
     name: Deploy to Server
-    needs: [build-backend, build-frontend, build-mobile]
+    needs: [build-backend, build-frontend]
     runs-on: ubuntu-latest
     environment:
       name: production
@@ -205,13 +168,6 @@ jobs:
         with:
           name: frontend-dist
           path: ./artifacts/frontend/
-
-      - name: 下载移动端 H5
-        uses: actions/download-artifact@v4
-        continue-on-error: true  # 如果没有移动端产物也不中断
-        with:
-          name: mobile-h5
-          path: ./artifacts/mobile/
 
       # ========================================
       # 部署后端
@@ -260,19 +216,7 @@ jobs:
       # ========================================
       # 部署移动端
       # ========================================
-      - name: 上传移动端 H5 文件
-        run: |
-          if [ -d "./artifacts/mobile" ] && [ "$(ls -A ./artifacts/mobile)" ]; then
-            echo "📱 部署移动端 H5..."
-            ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} \
-              'mkdir -p /opt/mall-mobile'
-            scp -P ${{ secrets.SSH_PORT }} -r \
-              ./artifacts/mobile/* \
-              ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:/opt/mall-mobile/
-          else
-            echo "⚠️ 没有移动端产物，跳过移动端部署"
-          fi
-
+      # 注意: 移动端需要使用 HBuilderX 构建，未包含在 CI/CD 流程中
       # ========================================
       # 重新加载 Nginx
       # ========================================
@@ -305,13 +249,11 @@ jobs:
         if: success()
         run: |
           echo "✅ 部署成功！"
-          echo "后端: http://47.239.7.215:8080/zhinengxiaochengxsc/"
-          echo "前端: http://47.239.7.215/"
-          if [ -d "./artifacts/mobile" ] && [ "$(ls -A ./artifacts/mobile)" ]; then
-            echo "移动端: http://47.239.7.215/tiaozaoshichang/front/h5/"
-          else
-            echo "⚠️ 移动端未部署（缺少 package.json）"
-          fi
+          echo "🔧 后端 API: http://47.83.113.245:8080/zhinengxiaochengxsc/"
+          echo "🌐 前端页面: http://47.83.113.245/"
+          echo ""
+          echo "📱 移动端需要使用 HBuilderX 手动构建和部署"
+          echo "   参考 README.md 中的移动端构建说明"
 
       - name: 发送部署失败通知
         if: failure()
