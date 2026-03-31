@@ -23,7 +23,8 @@
       "Skill(beads:create)",
       "Bash(bd create:*)",
       "Skill(beads:list)",
-      "Bash(bd:*)"
+      "Bash(bd:*)",
+      "Bash(ssh:*)"
     ],
     "additionalDirectories": [
       "..\\..\\opensource\\synapse"
