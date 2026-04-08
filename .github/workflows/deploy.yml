@@ -55,7 +55,10 @@ jobs:
 
       - name: 初始化测试数据库
         run: |
-          mysql -h 127.0.0.1 -uroot -p483288fjc db_mall < db_mall.sql
+          # 等待MySQL服务完全启动
+          sleep 10
+          # 导入数据库schema
+          mysql -h 127.0.0.1 -uroot -p483288fjc db_mall < server/db_mall.sql
 
       - name: 构建后端并运行测试
         run: |
