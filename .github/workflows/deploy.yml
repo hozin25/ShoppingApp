@@ -28,6 +28,20 @@ jobs:
     name: Build & Test Backend
     runs-on: ubuntu-latest
 
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: 483288fjc
+          MYSQL_DATABASE: db_mall
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
     steps:
       - name: Checkout 代码
         uses: actions/checkout@v4
@@ -38,6 +52,10 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: 'temurin'
           cache: 'maven'
+
+      - name: 初始化测试数据库
+        run: |
+          mysql -h 127.0.0.1 -uroot -p483288fjc db_mall < db_mall.sql
 
       - name: 构建后端并运行测试
         run: |
