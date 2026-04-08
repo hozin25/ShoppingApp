@@ -193,6 +193,11 @@ jobs:
             ./artifacts/backend/zhinengxiaochengxsc-0.0.1-SNAPSHOT.jar \
             ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:/opt/app/
 
+      - name: 检查并启动MySQL容器
+        run: |
+          ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} \
+            'bash -s' < scripts/deploy/ensure-mysql.sh
+
       - name: 启动后端服务
         run: |
           ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} \
