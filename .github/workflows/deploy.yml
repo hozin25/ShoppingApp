@@ -249,8 +249,8 @@ jobs:
         if: success()
         run: |
           echo "✅ 部署成功！"
-          echo "🔧 后端 API: http://47.83.113.245:8080/zhinengxiaochengxsc/"
-          echo "🌐 前端页面: http://47.83.113.245/"
+          echo "🔧 后端 API: http://47.83.117.201:8080/zhinengxiaochengxsc/"
+          echo "🌐 前端页面: http://47.83.117.201/"
           echo ""
           echo "📱 移动端需要使用 HBuilderX 手动构建和部署"
           echo "   参考 README.md 中的移动端构建说明"
