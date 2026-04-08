@@ -1,5 +1,5 @@
 <template>
-  <el-breadcrumb class="app-breadcrumb" separator="✌" style="height:40px;backgroundColor:${template.back.breadcrumb.boxBackgroundColor};borderRadius:0px;padding:0px 0px 0px 450px;boxShadow:0px 0px 0px #f903d4;borderWidth:2px;borderStyle:none none dashed none ;borderColor:var(--publicMainColor);">
+  <el-breadcrumb class="app-breadcrumb glass-breadcrumb" separator="✌">
     <transition-group name="breadcrumb" class="box" :style="1==1?'justifyContent:flex-start;':1==2?'justifyContent:center;':'justifyContent:flex-end;'">
       <el-breadcrumb-item v-for="(item,index) in levelList" :key="item.path">
         <span v-if="item.redirect==='noRedirect'||index==levelList.length-1" class="no-redirect">{{ item.name }}</span>
@@ -63,13 +63,13 @@
                 this.$nextTick(()=>{
                     document.querySelectorAll('.app-breadcrumb .el-breadcrumb__separator').forEach(el=>{
                         el.innerText = "✌"
-                        el.style.color = "#C0C4CC"
+                        el.style.color = "rgba(102, 102, 102, 0.6)"
                     })
                     document.querySelectorAll('.app-breadcrumb .el-breadcrumb__inner a').forEach(el=>{
-                        el.style.color = "var(--publicMainColor)"
+                        el.style.color = "rgba(51, 51, 51, 0.85)"
                     })
                     document.querySelectorAll('.app-breadcrumb .el-breadcrumb__inner .no-redirect').forEach(el=>{
-                        el.style.color = "rgba(179, 179, 179, 1)"
+                        el.style.color = "rgba(102, 102, 102, 0.6)"
                     })
 
         let str = "vertical"
@@ -92,6 +92,14 @@
   display: block;
   font-size: 14px;
   line-height: 50px;
+  padding: 12px 24px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(15px) saturate(180%);
+  -webkit-backdrop-filter: blur(15px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+  margin-bottom: 16px;
 
   .box {
     display: flex;
@@ -102,8 +110,18 @@
   }
 
   .no-redirect {
-    color: #97a8be;
+    color: rgba(102, 102, 102, 0.6);
     cursor: text;
+  }
+
+  a {
+    color: rgba(51, 51, 51, 0.85);
+    transition: all 0.3s ease;
+
+    &:hover {
+      color: var(--publicMainColor);
+      text-decoration: none;
+    }
   }
 }
 </style>

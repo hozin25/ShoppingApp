@@ -1,8 +1,12 @@
 <template>
 <div class="content">
   <!--  <div style="width: 100%;height: 100%" v-if="sessionTable!='users'">-->
-  <div style="width: 100%;height: 100%">
-    <div class="text main-text">欢迎使用 {{this.$project.projectName}}</div>
+  <div class="glass-container">
+    <div class="glass-card welcome-card">
+      <div class="welcome-icon">🎉</div>
+      <div class="text main-text">欢迎使用 {{this.$project.projectName}}</div>
+      <div class="text sub-text">智能电商管理系统</div>
+    </div>
   </div>
   <div style="width: 100%;height: 100%;display:flex " v-if="sessionTable=='users' && false">
     <div style="width: 50%;height: 100%">
@@ -300,20 +304,135 @@ export default {
 .content {
   display: flex;
   align-items: center;
-  flex-direction: column;
+  justify-content: center;
   width: 100%;
   height: 100%;
   min-height: 500px;
   text-align: center;
-  .main-text{
-    font-size: 38px;
-    font-weight: bold;
-    margin-top: 15%;
+  background: transparent;
+  position: relative;
+  overflow: hidden;
+
+  // 添加背景装饰
+  &::before {
+    content: '';
+    position: absolute;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(100, 126, 255, 0.04) 0%, transparent 70%);
+    border-radius: 50%;
+    top: -250px;
+    right: -250px;
+    animation: float 20s infinite ease-in-out;
   }
-  .text {
-    font-size: 24px;
-    font-weight: bold;
-    color: #333;
+
+  &::after {
+    content: '';
+    position: absolute;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(66, 211, 146, 0.04) 0%, transparent 70%);
+    border-radius: 50%;
+    bottom: -200px;
+    left: -200px;
+    animation: float 15s infinite ease-in-out reverse;
   }
+
+  @keyframes float {
+    0%, 100% {
+      transform: translate(0, 0) scale(1);
+    }
+    50% {
+      transform: translate(50px, 50px) scale(1.1);
+    }
+  }
+}
+
+.glass-container {
+  position: relative;
+  z-index: 1;
+  padding: 20px;
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  padding: 60px 80px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+
+  // 玻璃光泽效果
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.4),
+      transparent
+    );
+    transition: left 0.5s ease;
+  }
+
+  &:hover {
+    transform: translateY(-5px);
+    box-shadow:
+      0 12px 48px rgba(0, 0, 0, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 1);
+
+    &::before {
+      left: 100%;
+    }
+  }
+}
+
+.welcome-card {
+  max-width: 600px;
+
+  .welcome-icon {
+    font-size: 64px;
+    margin-bottom: 24px;
+    animation: bounce 2s infinite;
+  }
+
+  @keyframes bounce {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+}
+
+.main-text {
+  font-size: 38px;
+  font-weight: bold;
+  color: rgba(51, 51, 51, 0.9);
+  margin-bottom: 16px;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+}
+
+.sub-text {
+  font-size: 20px;
+  font-weight: 500;
+  color: rgba(102, 102, 102, 0.75);
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+}
+
+.text {
+  position: relative;
+  z-index: 1;
 }
 </style>

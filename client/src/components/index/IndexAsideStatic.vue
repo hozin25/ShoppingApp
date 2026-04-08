@@ -1,11 +1,11 @@
 <template>
   <el-aside class="index-aside" height="100vh" width="200px">
     <div class="index-aside-inner menulist" style="height:100%">
-      <div v-for="item in menuList" :key="item.roleName" v-if="role==item.roleName" class="menulist-item" style="height:100%;broder:0;background-color:#FFFFFF">
+      <div v-for="item in menuList" :key="item.roleName" v-if="role==item.roleName" class="menulist-item glass-card" style="height:100%;broder:0;">
         <div class="menulistImg" style="backgroundColor:#ff0000;padding:25px 0" v-if="false && menulistStyle == 'vertical'">
           <el-image v-if="'http://codegen.caihongy.cn/20201021/cc7d45d9c8164b58b18351764eba9be1.jpg'" src="http://codegen.caihongy.cn/20201021/cc7d45d9c8164b58b18351764eba9be1.jpg" fit="cover" />
         </div>
-        <el-menu mode="vertical" :unique-opened="true" class="el-menu-demo" style="height:100%;" background-color="#FFFFFF" text-color="#000000" active-text-color="var(--publicMainColor)" default-active="0">
+        <el-menu mode="vertical" :unique-opened="true" class="el-menu-demo glass-menu" style="height:100%;" background-color="transparent" text-color="#333333" active-text-color="var(--publicMainColor)" default-active="0">
           <el-menu-item index="(0).toString()" :style="menulistBorderBottom" @click="menuHandler('')"><i v-if="false" class="el-icon-s-home" />首页</el-menu-item>
           <el-submenu :index="(1).toString()" :style="menulistBorderBottom">
             <template slot="title">
@@ -127,25 +127,35 @@ export default {
         document.querySelectorAll('.menulist .el-menu-item').forEach(el=>{
           el.addEventListener("mouseenter", e => {
             e.stopPropagation()
-            el.style.backgroundColor = "rgba(243, 241, 250, 1)"
+            el.style.backgroundColor = "rgba(255, 255, 255, 0.5)"
+            el.style.backdropFilter = "blur(10px)"
+            el.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.05)"
           })
           el.addEventListener("mouseleave", e => {
             e.stopPropagation()
-            el.style.backgroundColor = "#FFFFFF"
+            el.style.backgroundColor = "transparent"
+            el.style.backdropFilter = "none"
+            el.style.boxShadow = "none"
           })
           el.addEventListener("focus", e => {
             e.stopPropagation()
-            el.style.backgroundColor = "rgba(243, 241, 250, 1)"
+            el.style.backgroundColor = "rgba(255, 255, 255, 0.5)"
+            el.style.backdropFilter = "blur(10px)"
+            el.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.05)"
           })
         })
         document.querySelectorAll('.menulist .el-submenu__title').forEach(el=>{
           el.addEventListener("mouseenter", e => {
             e.stopPropagation()
-            el.style.backgroundColor = "rgba(243, 241, 250, 1)"
+            el.style.backgroundColor = "rgba(255, 255, 255, 0.5)"
+            el.style.backdropFilter = "blur(10px)"
+            el.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.05)"
           })
           el.addEventListener("mouseleave", e => {
             e.stopPropagation()
-            el.style.backgroundColor = "#FFFFFF"
+            el.style.backgroundColor = "transparent"
+            el.style.backdropFilter = "none"
+            el.style.boxShadow = "none"
           })
         })
       })
@@ -153,7 +163,7 @@ export default {
     setMenulistIconColor() {
       this.$nextTick(()=>{
         document.querySelectorAll('.menulist .el-submenu__title .el-submenu__icon-arrow').forEach(el=>{
-          el.style.color = "rgba(224, 224, 232, 1)"
+          el.style.color = "rgba(102, 102, 102, 0.6)"
         })
       })
     },
@@ -234,6 +244,45 @@ export default {
 
       .el-menu {
         border: 0;
+      }
+    }
+  }
+
+  .glass-card {
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(15px) saturate(180%);
+    -webkit-backdrop-filter: blur(15px) saturate(180%);
+    border-right: 1px solid rgba(255, 255, 255, 0.7);
+  }
+
+  .glass-menu {
+    .el-menu-item {
+      transition: all 0.3s ease;
+      color: rgba(51, 51, 51, 0.85);
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.5) !important;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      }
+
+      &.is-active {
+        background: rgba(255, 255, 255, 0.7) !important;
+        backdrop-filter: blur(10px);
+        border-left: 3px solid var(--publicMainColor);
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        color: var(--publicMainColor);
+      }
+    }
+
+    .el-submenu__title {
+      transition: all 0.3s ease;
+      color: rgba(51, 51, 51, 0.85);
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.5) !important;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
       }
     }
   }
