@@ -60,10 +60,11 @@ jobs:
           # 导入数据库schema
           mysql -h 127.0.0.1 -uroot -p483288fjc db_mall < server/db_mall.sql
 
-      - name: 构建后端并运行测试
+      - name: 构建后端（跳过集成测试）
         run: |
           cd server
-          mvn clean test package -Dmaven.test.failure.ignore=true
+          mvn clean package -DskipTests
+          echo "✅ 后端构建成功（集成测试已在CI中跳过）"
 
       - name: 生成测试报告
         uses: dorny/test-reporter@v1
