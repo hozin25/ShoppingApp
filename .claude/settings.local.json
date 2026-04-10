@@ -24,7 +24,9 @@
       "Bash(bd create:*)",
       "Skill(beads:list)",
       "Bash(bd:*)",
-      "Bash(ssh:*)"
+      "Bash(ssh:*)",
+      "Bash(cp \"C:/Users/Administrator/.claude/projects/C--Users-Administrator-Desktop-workspace-ShoppingApp/memory/thoughts/shared/research/2026-04-10-chat-functionality-implementation.md\" \"C:/Users/Administrator/Desktop/workspace/ShoppingApp/docs/research/2026-04-10-chat-functionality-implementation.md\")",
+      "Bash(mkdir -p \"C:/Users/Administrator/Desktop/workspace/ShoppingApp/docs/research\")"
     ],
     "additionalDirectories": [
       "..\\..\\opensource\\synapse"
